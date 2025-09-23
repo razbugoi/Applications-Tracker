@@ -10,12 +10,17 @@ applications:
           commands:
             - npm run build
       artifacts:
-        baseDirectory: .next
+        baseDirectory: .
         files:
-          - '**/*'
+          - .next/standalone/**/*
+          - .next/static/**/*
+          - public/**/*
+          - package.json
+          - package-lock.json
+          - next.config.js
       cache:
         paths:
           - node_modules/**/*
     server:
-      command: npm run start
+      command: node .next/standalone/server.js
       port: 3000

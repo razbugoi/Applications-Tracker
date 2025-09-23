@@ -1,0 +1,14 @@
+{
+  "name": "scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.893.0",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "import:applications": "node import-applications.js",
+    "dynamodb:setup": "node setup-dynamodb-local.js"
+  }
+}

@@ -29,8 +29,13 @@ export function StatusColumn({ status, title, subtitle, onSelect }: Props) {
         {isLoading && <p style={infoText}>Loading…</p>}
         {error && <p style={{ ...infoText, color: 'var(--danger)' }}>Failed to load</p>}
         {!isLoading && !error && items.length === 0 && <p style={infoText}>No records</p>}
-        {items.map((application) => (
-          <ApplicationCard key={application.applicationId} application={application} onSelect={onSelect} />
+        {items.map((application, index) => (
+          <ApplicationCard
+            key={application.applicationId}
+            application={application}
+            index={index + 1}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </section>

@@ -11,8 +11,10 @@ interface CreateApplicationRequest {
   submissionDate: string;
   validationDate?: string;
   caseOfficer?: string;
+  caseOfficerEmail?: string;
   determinationDate?: string;
   eotDate?: string;
+  planningPortalUrl?: string;
   notes?: string;
 }
 

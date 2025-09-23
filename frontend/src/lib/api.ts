@@ -1,9 +1,12 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
-import { isAmplifyConfigured } from './amplifyClient';
+import { isAmplifyConfigured, isAuthBypassed } from './amplifyClient';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 async function authHeader(): Promise<Record<string, string>> {
+  if (isAuthBypassed) {
+    return {};
+  }
   if (!isAmplifyConfigured) {
     return {};
   }
@@ -11,7 +14,7 @@ async function authHeader(): Promise<Record<string, string>> {
     const session = await fetchAuthSession();
     const token = session.tokens?.idToken?.toString();
     if (token) {
-      return { Authorization: token };
+      return { Authorization: `Bearer ${token}` };
     }
   } catch (error) {
     console.warn('Failed to fetch auth session', error);
@@ -57,16 +60,23 @@ export interface ApplicationDto {
   outcome?: string;
   issuesCount?: number;
   caseOfficer?: string;
+  caseOfficerEmail?: string;
+  planningPortalUrl?: string | null;
 }
 
 export interface ApplicationAggregateDto {
   application: ApplicationDto & { notes?: string };
   issues: IssueDto[];
   timeline: TimelineEventDto[];
+  extensions: ExtensionDto[];
 }
 
 export interface IssueDto {
   issueId: string;
+  applicationId: string;
+  prjCodeName?: string;
+  ppReference: string;
+  lpaReference?: string;
   title: string;
   category: string;
   status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
@@ -84,6 +94,18 @@ export interface TimelineEventDto {
   stage: string;
   timestamp: string;
   details?: string;
+}
+
+export interface ExtensionDto {
+  extensionId: string;
+  applicationId: string;
+  ppReference: string;
+  prjCodeName?: string;
+  requestedDate?: string;
+  agreedDate: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export async function listApplications(status: string) {
@@ -118,6 +140,18 @@ export async function updateIssue(applicationId: string, issueId: string, payloa
 export async function updateApplication(applicationId: string, payload: Record<string, unknown>) {
   return request(`/applications/${applicationId}`, {
     method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listIssues(status?: string) {
+  const search = status ? `?status=${encodeURIComponent(status)}` : '';
+  return request<{ items: IssueDto[] }>(`/issues${search}`);
+}
+
+export async function createExtension(applicationId: string, payload: Record<string, unknown>) {
+  return request(`/applications/${applicationId}/extensions`, {
+    method: 'POST',
     body: JSON.stringify(payload),
   });
 }

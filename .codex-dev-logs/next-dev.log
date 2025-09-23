@@ -1,0 +1,177 @@
+
+> app-tracker-frontend@0.1.0 dev
+> next dev
+
+(node:3753) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/razbugoi/app-tracker/frontend/next.config.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/razbugoi/app-tracker/frontend/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ▲ Next.js 14.2.3
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+  - Experiments (use with caution):
+    · typedRoutes
+
+ ✓ Starting...
+(node:3754) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/razbugoi/app-tracker/frontend/next.config.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/razbugoi/app-tracker/frontend/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ Ready in 1376ms
+ ○ Compiling /submitted ...
+ ✓ Compiled /submitted in 1333ms (2277 modules)
+ GET /submitted 200 in 1448ms
+ ✓ Compiled /issues in 347ms (2284 modules)
+ GET /issues 200 in 408ms
+ ⨯ ./src/app/layout.tsx
+Error: 
+  [31mx[0m You're importing a component that needs usePathname. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+  [31m|[0m Learn more: https://nextjs.org/docs/getting-started/react-essentials
+  [31m|[0m 
+  [31m|[0m 
+   ,-[[36;1;4m/Users/razbugoi/app-tracker/frontend/src/app/layout.tsx[0m:2:1]
+ [2m2[0m | import '../lib/amplifyClient';
+ [2m3[0m | import type { ReactNode } from 'react';
+ [2m4[0m | import Link from 'next/link';
+ [2m5[0m | import { usePathname } from 'next/navigation';
+   : [31;1m         ^^^^^^^^^^^[0m
+ [2m6[0m | 
+ [2m7[0m | const NAV_LINKS = [
+ [2m8[0m |   { href: '/', label: 'Dashboard' },
+   `----
+
+Import trace for requested module:
+./src/app/layout.tsx
+ ⚠ Your page app/issues/page.tsx did not have a root layout. We created app/layout.tsx for you.
+ ⚠ Your page app/submitted/page.tsx did not have a root layout. We created app/layout.tsx for you.
+ ✓ Compiled in 75ms (853 modules)
+ ✓ Compiled in 106ms (853 modules)
+ ✓ Compiled in 515ms (2303 modules)
+ ✓ Compiled / in 264ms (2295 modules)
+ ✓ Compiled /invalidated in 153ms (2297 modules)
+ ✓ Compiled /live in 122ms (2299 modules)
+ ✓ Compiled /determined in 123ms (2301 modules)
+ ✓ Compiled in 188ms (864 modules)
+ ✓ Compiled in 284ms (1719 modules)
+ ✓ Compiled in 140ms (1733 modules)
+ GET / 200 in 96ms
+ ✓ Compiled /invalidated in 143ms (866 modules)
+ ✓ Compiled /live in 124ms (868 modules)
+ ✓ Compiled in 475ms (1721 modules)
+ ✓ Compiled in 132ms (1721 modules)
+ ✓ Compiled in 218ms (1721 modules)
+ ✓ Compiled in 101ms (866 modules)
+ ✓ Compiled in 127ms (866 modules)
+ ✓ Compiled in 64ms (866 modules)
+ ✓ Compiled in 72ms (861 modules)
+ ✓ Compiled in 145ms (1715 modules)
+ ✓ Compiled in 197ms (1715 modules)
+ ✓ Compiled / in 276ms (1721 modules)
+ GET / 200 in 59ms
+ ✓ Compiled /live in 134ms (867 modules)
+ ✓ Compiled in 369ms (1721 modules)
+ ✓ Compiled in 300ms (1721 modules)
+ ✓ Compiled in 128ms (1721 modules)
+ ✓ Compiled in 174ms (1721 modules)
+ ✓ Compiled in 156ms (1721 modules)
+ ✓ Compiled in 193ms (1721 modules)
+ ✓ Compiled in 232ms (1721 modules)
+ ✓ Compiled in 236ms (1721 modules)
+ GET / 200 in 84ms
+ ✓ Compiled /submitted in 191ms (867 modules)
+ ✓ Compiled in 272ms (1719 modules)
+ ✓ Compiled in 126ms (1719 modules)
+ ✓ Compiled / in 88ms (867 modules)
+ ✓ Compiled in 258ms (1721 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 247ms (1721 modules)
+ ⨯ src/components/StatusPage.tsx (53:35) @ useState
+ ⨯ ReferenceError: useState is not defined
+    at StatusPage (./src/components/StatusPage.tsx:49:37)
+digest: "71072826"
+[0m [90m 51 |[39m[0m
+[0m [90m 52 |[39m [36mexport[39m [36mfunction[39m [33mStatusPage[39m({ status[33m,[39m title[33m,[39m subtitle }[33m:[39m [33mStatusPageProps[39m) {[0m
+[0m[31m[1m>[22m[39m[90m 53 |[39m   [36mconst[39m [selected[33m,[39m setSelected] [33m=[39m useState[33m<[39m[33mstring[39m [33m|[39m [36mnull[39m[33m>[39m([36mnull[39m)[33m;[39m[0m
+[0m [90m    |[39m                                   [31m[1m^[22m[39m[0m
+[0m [90m 54 |[39m   [36mconst[39m { data[33m,[39m error[33m,[39m isLoading } [33m=[39m useSWR([[32m'applications'[39m[33m,[39m status][33m,[39m () [33m=>[39m listApplications(status))[33m;[39m[0m
+[0m [90m 55 |[39m   [36mconst[39m { mutate } [33m=[39m useSWRConfig()[33m;[39m[0m
+[0m [90m 56 |[39m[0m
+ GET /live 500 in 190ms
+ ✓ Compiled in 180ms (1721 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /live 200 in 52ms
+ ✓ Compiled in 236ms (1719 modules)
+ ✓ Compiled in 196ms (1719 modules)
+ ⨯ ./src/components/Modal.tsx
+Error: Failed to read source code from /Users/razbugoi/app-tracker/frontend/src/components/Modal.tsx
+
+Caused by:
+    No such file or directory (os error 2)
+
+Import trace for requested module:
+./src/components/Modal.tsx
+./src/components/NewApplicationForm.tsx
+./src/components/StatusPage.tsx
+ ⨯ ./src/components/Modal.tsx
+Error: Failed to read source code from /Users/razbugoi/app-tracker/frontend/src/components/Modal.tsx
+
+Caused by:
+    No such file or directory (os error 2)
+
+Import trace for requested module:
+./src/components/Modal.tsx
+./src/components/NewApplicationForm.tsx
+./src/components/StatusPage.tsx
+ ✓ Compiled in 177ms (1719 modules)
+ ✓ Compiled /applications/[id] in 228ms (1727 modules)
+ ✓ Compiled in 497ms (1799 modules)
+ ✓ Compiled in 172ms (1799 modules)
+ ✓ Compiled in 120ms (1799 modules)
+ ✓ Compiled in 153ms (1799 modules)
+ ✓ Compiled in 200ms (1799 modules)
+ ✓ Compiled in 169ms (1799 modules)
+ ✓ Compiled in 232ms (1799 modules)
+ ✓ Compiled in 199ms (1799 modules)
+ ✓ Compiled /determined in 208ms (906 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled /_not-found in 382ms (1802 modules)
+ GET /applications 404 in 529ms
+ GET /applications/fe150208-8738-484f-ac48-512158208059 200 in 250ms
+ GET / 200 in 28ms
+ ✓ Compiled /live in 60ms (907 modules)
+ ✓ Compiled in 355ms (1799 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /applications/f1f6131b-9740-4c11-b864-35a1a6b39516 200 in 149ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled /_not-found in 258ms (1802 modules)
+ GET /applications 404 in 383ms
+ GET /applications/f1f6131b-9740-4c11-b864-35a1a6b39516 200 in 234ms
+ GET / 200 in 40ms
+ ✓ Compiled /submitted in 130ms (906 modules)
+ GET / 200 in 36ms
+ ✓ Compiled in 378ms (1796 modules)
+ ✓ Compiled in 127ms (1796 modules)
+ ✓ Compiled /invalidated in 207ms (903 modules)
+ ✓ Compiled /issues in 58ms (904 modules)
+ ✓ Compiled / in 56ms (906 modules)
+ ✓ Compiled in 531ms (1799 modules)
+ ✓ Compiled in 151ms (1799 modules)
+ ✓ Compiled in 323ms (1813 modules)
+ ✓ Compiled in 200ms (1799 modules)
+ ✓ Compiled /live in 226ms (906 modules)
+ ✓ Compiled /determined in 145ms (908 modules)
+ ✓ Compiled in 442ms (1796 modules)
+ ✓ Compiled in 286ms (1796 modules)
+ ✓ Compiled in 157ms (1796 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /submitted 200 in 101ms
+ ✓ Compiled in 184ms (1796 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /submitted 200 in 58ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 300ms (1796 modules)
+ GET /submitted 200 in 246ms
+ ✓ Compiled in 211ms (1796 modules)
+ ✓ Compiled in 189ms (1796 modules)
+ ✓ Compiled in 218ms (1796 modules)
+ ✓ Compiled /invalidated in 247ms (903 modules)

@@ -6,6 +6,7 @@ import {
   ApplicationStatus,
   Issue,
   TimelineEvent,
+  ExtensionOfTime,
 } from '../models/application.js';
 import { DynamoRepository } from '../repositories/dynamoRepository.js';
 
@@ -20,8 +21,10 @@ interface CreateApplicationInput {
   submissionDate: string;
   validationDate?: string;
   caseOfficer?: string;
+  caseOfficerEmail?: string;
   determinationDate?: string;
   eotDate?: string;
+  planningPortalUrl?: string;
   notes?: string;
 }
 
@@ -36,6 +39,9 @@ interface UpdateApplicationInput {
   council?: string;
   description?: string;
   lpaReference?: string;
+  planningPortalUrl?: string | null;
+  caseOfficer?: string | null;
+  caseOfficerEmail?: string | null;
 }
 
 interface CreateIssueInput {
@@ -56,6 +62,12 @@ interface UpdateIssueInput {
   applicationId: string;
   issueId: string;
   updates: Partial<Pick<Issue, 'title' | 'category' | 'description' | 'raisedBy' | 'assignedTo' | 'status' | 'dueDate' | 'resolutionNotes' | 'dateResolved'>>;
+}
+
+interface CreateExtensionInput {
+  requestedDate?: string;
+  agreedDate: string;
+  notes?: string;
 }
 
 function nowIso() {
@@ -95,10 +107,12 @@ export async function createApplication(input: CreateApplicationInput): Promise<
     submissionDate: input.submissionDate,
     validationDate: input.validationDate,
     caseOfficer: input.caseOfficer,
+    caseOfficerEmail: input.caseOfficerEmail,
     determinationDate: input.determinationDate,
     eotDate: input.eotDate,
     status: input.validationDate ? 'Live' : 'Submitted',
     outcome: 'Pending',
+    planningPortalUrl: input.planningPortalUrl,
     notes: input.notes,
     issuesCount: 0,
     createdAt: now,
@@ -121,6 +135,10 @@ export async function listApplications(status: ApplicationStatus, limit = 25, ne
 
 export async function getApplication(applicationId: string): Promise<ApplicationAggregate | null> {
   return repository.getApplicationAggregate(applicationId);
+}
+
+export async function listIssues(status?: Issue['status']) {
+  return repository.listIssues(status);
 }
 
 export async function patchApplication(applicationId: string, updates: UpdateApplicationInput) {
@@ -189,6 +207,7 @@ export async function createIssue(input: CreateIssueInput) {
     applicationId: input.applicationId,
     ppReference: input.ppReference,
     lpaReference: input.lpaReference,
+    prjCodeName: aggregate.application.prjCodeName,
     title: input.title,
     category: input.category,
     description: input.description,
@@ -218,6 +237,44 @@ export async function createIssue(input: CreateIssueInput) {
   await repository.updateApplication(input.applicationId, updates, aggregate.application);
 
   return issue;
+}
+
+export async function createExtensionOfTime(applicationId: string, input: CreateExtensionInput) {
+  if (!input.agreedDate) {
+    throw new Error('agreedDate is required');
+  }
+
+  const aggregate = await repository.getApplicationAggregate(applicationId);
+  if (!aggregate) {
+    throw new Error('Application not found');
+  }
+
+  if (aggregate.application.status !== 'Live') {
+    throw new Error('Extensions of time can only be added to Live applications');
+  }
+
+  const now = nowIso();
+  const extension: ExtensionOfTime = {
+    extensionId: uuid(),
+    applicationId,
+    ppReference: aggregate.application.ppReference,
+    prjCodeName: aggregate.application.prjCodeName,
+    requestedDate: input.requestedDate,
+    agreedDate: input.agreedDate,
+    notes: input.notes,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await repository.createExtension(extension);
+  const timelineDetails = input.notes
+    ? `${input.agreedDate} – ${input.notes}`
+    : input.agreedDate;
+  await repository.putTimelineEvent(
+    buildTimelineEvent(applicationId, 'Live', 'Extension of Time Agreed', timelineDetails)
+  );
+
+  await repository.updateApplication(applicationId, { eotDate: input.agreedDate }, aggregate.application);
 }
 
 export async function updateIssue({ applicationId, issueId, updates }: UpdateIssueInput) {

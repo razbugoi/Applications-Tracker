@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useSWRConfig } from 'swr';
+import { useRouter } from 'next/navigation';
 import { NewApplicationForm } from './NewApplicationForm';
 import { StatusColumn } from './StatusColumn';
-import { ApplicationDetailPanel } from './ApplicationDetailPanel';
 import type { ApplicationDto } from '@/lib/api';
+import { applicationRoute } from '@/lib/routes';
 
 const COLUMNS = [
   {
@@ -32,12 +32,12 @@ const COLUMNS = [
 ];
 
 export function ApplicationsBoard() {
-  const [selected, setSelected] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
+  const router = useRouter();
 
   async function handleCreated(application: ApplicationDto) {
     await mutate(['applications', application.status]);
-    setSelected(application.applicationId);
+    router.push(applicationRoute(application.applicationId));
   }
 
   return (
@@ -58,11 +58,10 @@ export function ApplicationsBoard() {
             status={column.status}
             title={column.title}
             subtitle={column.subtitle}
-            onSelect={setSelected}
+            onSelect={(id) => router.push(applicationRoute(id))}
           />
         ))}
       </div>
-      {selected && <ApplicationDetailPanel applicationId={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
@@ -86,5 +85,4 @@ const columnsGrid: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
   gap: 20,
-  paddingRight: 420,
 };

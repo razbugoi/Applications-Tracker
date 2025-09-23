@@ -11,10 +11,12 @@ export interface Application {
   submissionDate: string;
   validationDate?: string;
   caseOfficer?: string;
+  caseOfficerEmail?: string;
   determinationDate?: string;
   eotDate?: string;
   status: ApplicationStatus;
   outcome?: ApplicationOutcome;
+  planningPortalUrl?: string;
   notes?: string;
   issuesCount?: number;
   createdAt: string;
@@ -26,6 +28,7 @@ export interface Issue {
   applicationId: string;
   ppReference: string;
   lpaReference?: string;
+  prjCodeName?: string;
   title: string;
   category: string;
   description: string;
@@ -50,8 +53,21 @@ export interface TimelineEvent {
   durationDays?: number;
 }
 
+export interface ExtensionOfTime {
+  extensionId: string;
+  applicationId: string;
+  ppReference: string;
+  prjCodeName?: string;
+  requestedDate?: string;
+  agreedDate: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApplicationAggregate {
   application: Application;
   issues: Issue[];
   timeline: TimelineEvent[];
+  extensions: ExtensionOfTime[];
 }

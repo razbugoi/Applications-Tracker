@@ -9,6 +9,7 @@ yarn-error.log*
 backend/dist/
 frontend/.next/
 frontend/out/
+frontend/.env.local
 
 # SAM / AWS
 .aws-sam/

@@ -5,8 +5,9 @@ const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 const userPoolClientId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID;
 const identityPoolId = process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID;
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+const bypassAuth = process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true';
 
-const configured = Boolean(region && userPoolId && userPoolClientId && identityPoolId && apiBaseUrl);
+const configured = !bypassAuth && Boolean(region && userPoolId && userPoolClientId && identityPoolId && apiBaseUrl);
 
 if (configured) {
   Amplify.configure({
@@ -34,3 +35,4 @@ if (configured) {
 }
 
 export const isAmplifyConfigured = configured;
+export const isAuthBypassed = bypassAuth;

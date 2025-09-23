@@ -6,10 +6,11 @@ import type { CSSProperties } from 'react';
 
 interface Props {
   application: ApplicationDto;
+  index: number;
   onSelect: (applicationId: string) => void;
 }
 
-export function ApplicationCard({ application, onSelect }: Props) {
+export function ApplicationCard({ application, index, onSelect }: Props) {
   const submission = application.submissionDate ? format(new Date(application.submissionDate), 'dd MMM yyyy') : '—';
   const determination = application.determinationDate
     ? format(new Date(application.determinationDate), 'dd MMM yyyy')
@@ -18,6 +19,7 @@ export function ApplicationCard({ application, onSelect }: Props) {
 
   return (
     <button type="button" onClick={() => onSelect(application.applicationId)} style={buttonStyle}>
+      <div style={indexBadge}>#{index}</div>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{application.prjCodeName}</div>
       <div style={metaRow}>
         <span style={label}>PP Ref:</span>
@@ -60,6 +62,20 @@ const buttonStyle: CSSProperties = {
   cursor: 'pointer',
   boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
   marginBottom: 12,
+};
+
+const indexBadge: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 28,
+  height: 28,
+  borderRadius: '50%',
+  background: 'rgba(37, 99, 235, 0.1)',
+  color: 'var(--primary)',
+  fontWeight: 600,
+  fontSize: 13,
+  marginBottom: 6,
 };
 
 const metaRow: CSSProperties = {

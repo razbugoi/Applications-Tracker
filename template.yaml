@@ -3,6 +3,22 @@ Transform: AWS::Serverless-2016-10-31
 Description: >-
   Serverless backend for the planning applications tracker.
 
+Parameters:
+  DynamoEndpoint:
+    Type: String
+    Default: ''
+    Description: Optional override for the DynamoDB endpoint (used for local development with DynamoDB Local).
+  DisableApiAuth:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: Set to true to disable API authentication (useful for local development).
+
+Conditions:
+  UseApiAuth: !Equals [!Ref DisableApiAuth, 'false']
+
 Globals:
   Function:
     Runtime: nodejs20.x
@@ -15,6 +31,7 @@ Globals:
         DOCUMENT_BUCKET: !Ref DocumentsBucket
         REGION: !Ref AWS::Region
         POWERTOOLS_SERVICE_NAME: planning-tracker
+        DYNAMODB_ENDPOINT: !Ref DynamoEndpoint
 
 Resources:
   ApplicationsTable:
@@ -89,7 +106,7 @@ Resources:
           RequireNumbers: true
           RequireSymbols: false
           RequireUppercase: true
-      MfaConfiguration: OPTIONAL
+      MfaConfiguration: 'OFF'
 
   PlanningUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -292,6 +309,42 @@ Resources:
       BuildProperties:
         EntryPoints:
           - src/handlers/createIssue.ts
+
+  CreateExtensionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: createExtension.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApplicationsApi
+            Path: /applications/{id}/extensions
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/handlers/createExtension.ts
+
+  ListIssuesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: listIssues.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApplicationsApi
+            Path: /issues
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/handlers/listIssues.ts
 
   UpdateIssueFunction:
     Type: AWS::Serverless::Function

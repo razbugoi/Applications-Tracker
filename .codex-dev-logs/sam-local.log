@@ -1,0 +1,148 @@
+No current session found, using default AWS::AccountId
+Mounting CreateIssueFunction at http://127.0.0.1:3001/applications/{id}/issues [POST, OPTIONS]
+Mounting UpdateApplicationFunction at http://127.0.0.1:3001/applications/{id} [PATCH, OPTIONS]
+Mounting CreateExtensionFunction at http://127.0.0.1:3001/applications/{id}/extensions [POST, OPTIONS]
+Mounting ListApplicationsFunction at http://127.0.0.1:3001/applications [GET, OPTIONS]
+Mounting GetApplicationFunction at http://127.0.0.1:3001/applications/{id} [GET, OPTIONS]
+Mounting HealthFunction at http://127.0.0.1:3001/health [GET, OPTIONS]
+Mounting UpdateIssueFunction at http://127.0.0.1:3001/applications/{id}/issues/{issueId} [PATCH, OPTIONS]
+Mounting CreateApplicationFunction at http://127.0.0.1:3001/applications [POST, OPTIONS]
+Mounting ListIssuesFunction at http://127.0.0.1:3001/issues [GET, OPTIONS]
+You can now browse to the above endpoints to invoke your functions. You do not need to restart/reload SAM CLI while working on your functions, changes will be reflected instantly/automatically. If you used sam build before running local commands, you will need to re-run sam build for the changes to be picked up. You only need to restart SAM CLI if you update your AWS SAM template
+2025-09-22 14:34:22 [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:3001
+2025-09-22 14:34:22 [33mPress CTRL+C to quit[0m
+Invoking listApplications.handler (nodejs20.x)
+Local image is out of date and will be updated to the latest runtime. To skip this, pass in the parameter --skip-pull-image
+Building image............................................................................................................................................................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 566d3ac6-487b-49ce-844f-3d6eca035750 Version: $LATEST
+END RequestId: aa5d4d7f-aed6-4650-a406-3923e8c02a0d
+REPORT RequestId: aa5d4d7f-aed6-4650-a406-3923e8c02a0d	Init Duration: 0.29 ms	Duration: 1172.63 ms	Billed Duration: 1173 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:35:19 127.0.0.1 - - [22/Sep/2025 14:35:19] "GET /applications?status=Submitted HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 081317b0-f13e-45cc-9af6-10dfd21f3883 Version: $LATEST
+END RequestId: ef96b82a-fe0b-402c-80c8-d934bcdd4573
+REPORT RequestId: ef96b82a-fe0b-402c-80c8-d934bcdd4573	Init Duration: 0.30 ms	Duration: 1132.68 ms	Billed Duration: 1133 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:35:54 127.0.0.1 - - [22/Sep/2025 14:35:54] "GET /applications?status=Submitted HTTP/1.1" 200 -
+2025-09-22 14:36:01 127.0.0.1 - - [22/Sep/2025 14:36:01] "OPTIONS /applications?status=Invalidated HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 059379cc-f886-4be0-a41a-637b877133b2 Version: $LATEST
+END RequestId: a25ba189-1ce4-4e67-b2d9-ff85659d4eaa
+REPORT RequestId: a25ba189-1ce4-4e67-b2d9-ff85659d4eaa	Init Duration: 0.28 ms	Duration: 1051.12 ms	Billed Duration: 1052 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:36:05 127.0.0.1 - - [22/Sep/2025 14:36:05] "GET /applications?status=Invalidated HTTP/1.1" 200 -
+2025-09-22 14:36:12 127.0.0.1 - - [22/Sep/2025 14:36:12] "OPTIONS /applications?status=Live HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 466d1203-1438-43ae-b5ec-09a9d3290b68 Version: $LATEST
+END RequestId: e6d749a6-c2ce-4585-a4c8-b89895ad38fd
+REPORT RequestId: e6d749a6-c2ce-4585-a4c8-b89895ad38fd	Init Duration: 0.31 ms	Duration: 1082.18 ms	Billed Duration: 1083 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:36:15 127.0.0.1 - - [22/Sep/2025 14:36:15] "GET /applications?status=Live HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: aa7f80e3-4876-40d4-8638-067c6adeb48b Version: $LATEST
+END RequestId: 13111d5d-92c6-4dc2-ae47-93426b3e9238
+REPORT RequestId: 13111d5d-92c6-4dc2-ae47-93426b3e9238	Init Duration: 0.30 ms	Duration: 1179.29 ms	Billed Duration: 1180 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:36:53 127.0.0.1 - - [22/Sep/2025 14:36:53] "GET /applications?status=Live HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: a6568d90-613c-41ef-aa66-f6e165c081bb Version: $LATEST
+END RequestId: 340e5311-645a-465c-a663-27b43aa138bb
+REPORT RequestId: 340e5311-645a-465c-a663-27b43aa138bb	Init Duration: 0.57 ms	Duration: 1124.72 ms	Billed Duration: 1125 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:36:59 127.0.0.1 - - [22/Sep/2025 14:36:59] "GET /applications?status=Live HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 2a611e17-d538-45f6-837a-b7005aa5277e Version: $LATEST
+END RequestId: a75568d7-1424-41a0-a804-aaff20fd7798
+REPORT RequestId: a75568d7-1424-41a0-a804-aaff20fd7798	Init Duration: 15.52 ms	Duration: 1102.38 ms	Billed Duration: 1103 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:37:05 127.0.0.1 - - [22/Sep/2025 14:37:05] "GET /applications?status=Live HTTP/1.1" 200 -
+Invoking listApplications.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/ListApplicationsFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 8876fe41-7551-4d92-81cc-dddab12fd10e Version: $LATEST
+END RequestId: 37925c13-4f7f-4249-a999-8d5431403503
+REPORT RequestId: 37925c13-4f7f-4249-a999-8d5431403503	Init Duration: 0.36 ms	Duration: 1136.57 ms	Billed Duration: 1137 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:37:56 127.0.0.1 - - [22/Sep/2025 14:37:56] "GET /applications?status=Live HTTP/1.1" 200 -
+2025-09-22 14:38:01 127.0.0.1 - - [22/Sep/2025 14:38:01] "OPTIONS /applications/fe150208-8738-484f-ac48-512158208059 HTTP/1.1" 200 -
+Invoking getApplication.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/GetApplicationFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 5b06ef4f-c30d-4a86-a291-355b9c027f77 Version: $LATEST
+END RequestId: 52412c40-1638-4d6c-adf6-be562db3da83
+REPORT RequestId: 52412c40-1638-4d6c-adf6-be562db3da83	Init Duration: 0.28 ms	Duration: 1047.09 ms	Billed Duration: 1048 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:38:06 127.0.0.1 - - [22/Sep/2025 14:38:06] "GET /applications/fe150208-8738-484f-ac48-512158208059 HTTP/1.1" 200 -
+Invoking getApplication.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/GetApplicationFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 75608b1b-643e-400a-8362-48be6fd7bea2 Version: $LATEST
+END RequestId: 55dfc915-e0d6-4d8a-bc20-022d15436012
+REPORT RequestId: 55dfc915-e0d6-4d8a-bc20-022d15436012	Init Duration: 0.32 ms	Duration: 1036.62 ms	Billed Duration: 1037 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:38:51 127.0.0.1 - - [22/Sep/2025 14:38:51] "GET /applications/fe150208-8738-484f-ac48-512158208059 HTTP/1.1" 200 -
+Invoking getApplication.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/GetApplicationFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: fb0c41ab-5078-49e8-90f3-2e69c74d8b09 Version: $LATEST
+END RequestId: 08172d82-090a-41b1-9d79-3474a616d1c4
+REPORT RequestId: 08172d82-090a-41b1-9d79-3474a616d1c4	Init Duration: 0.32 ms	Duration: 1079.96 ms	Billed Duration: 1080 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:39:23 127.0.0.1 - - [22/Sep/2025 14:39:23] "GET /applications/fe150208-8738-484f-ac48-512158208059 HTTP/1.1" 200 -
+Invoking getApplication.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/GetApplicationFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: 0f752bd8-1aee-4cfa-81cc-9c948e02fb2f Version: $LATEST
+END RequestId: ef82e590-5bb8-4f04-999e-754fc39695c1
+REPORT RequestId: ef82e590-5bb8-4f04-999e-754fc39695c1	Init Duration: 0.30 ms	Duration: 1071.80 ms	Billed Duration: 1072 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:39:29 127.0.0.1 - - [22/Sep/2025 14:39:29] "GET /applications/fe150208-8738-484f-ac48-512158208059 HTTP/1.1" 200 -
+Invoking getApplication.handler (nodejs20.x)
+Building image....................
+Using local image: public.ecr.aws/lambda/nodejs:20-rapid-x86_64.
+
+Mounting /Users/razbugoi/app-tracker/.aws-sam/build/GetApplicationFunction as /var/task:ro,delegated, inside runtime container
+START RequestId: c4fa3b08-1fd4-4f26-9f13-a333a6863534 Version: $LATEST
+END RequestId: 74e29676-7963-45ba-8c08-70e64f47fd6e
+REPORT RequestId: 74e29676-7963-45ba-8c08-70e64f47fd6e	Init Duration: 0.40 ms	Duration: 1397.07 ms	Billed Duration: 1398 ms	Memory Size: 256 MB	Max Memory Used: 256 MB	
+
+2025-09-22 14:41:40 127.0.0.1 - - [22/Sep/2025 14:41:40] "GET /applications/fe150208-8738-484f-ac48-512158208059 HTTP/1.1" 200 -

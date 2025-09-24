@@ -13,17 +13,10 @@ applications:
       artifacts:
         baseDirectory: .
         files:
-          - .next/standalone/**/*
           - .next/static/**/*
           - public/**/*
-          - compute/**/*
-          - deploy-manifest.json
-          - package.json
-          - package-lock.json
-          - next.config.js
+          - index.html
+          - 404.html
       cache:
         paths:
           - node_modules/**/*
-    server:
-      command: node .next/standalone/server.js
-      port: 3000

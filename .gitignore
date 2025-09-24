@@ -12,6 +12,8 @@ frontend/out/
 frontend/.env.local
 frontend/compute/
 frontend/deploy-manifest.json
+frontend/index.html
+frontend/404.html
 
 # SAM / AWS
 .aws-sam/

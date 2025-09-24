@@ -1,12 +1,13 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import { useState } from 'react';
 import { useSWRConfig } from 'swr';
-import { useRouter } from 'next/navigation';
 import { NewApplicationForm } from './NewApplicationForm';
 import { StatusColumn } from './StatusColumn';
+import { ApplicationDetailPanel } from './ApplicationDetailPanel';
+import { Modal } from './Modal';
 import type { ApplicationDto } from '@/lib/api';
-import { applicationRoute } from '@/lib/routes';
 
 const COLUMNS = [
   {
@@ -33,11 +34,11 @@ const COLUMNS = [
 
 export function ApplicationsBoard() {
   const { mutate } = useSWRConfig();
-  const router = useRouter();
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   async function handleCreated(application: ApplicationDto) {
     await mutate(['applications', application.status]);
-    router.push(applicationRoute(application.applicationId));
+    setSelectedApplicationId(application.applicationId);
   }
 
   return (
@@ -58,10 +59,19 @@ export function ApplicationsBoard() {
             status={column.status}
             title={column.title}
             subtitle={column.subtitle}
-            onSelect={(id) => router.push(applicationRoute(id))}
+            onSelect={(id) => setSelectedApplicationId(id)}
           />
         ))}
       </div>
+
+      {selectedApplicationId && (
+        <Modal onClose={() => setSelectedApplicationId(null)}>
+          <ApplicationDetailPanel
+            applicationId={selectedApplicationId}
+            onClose={() => setSelectedApplicationId(null)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

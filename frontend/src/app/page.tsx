@@ -2,11 +2,12 @@
 
 import useSWR from 'swr';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Route } from 'next';
 import { listApplications, listIssues, type IssueDto, type ApplicationDto } from '@/lib/api';
-import { applicationRoute } from '@/lib/routes';
 import { NewApplicationForm } from '@/components/NewApplicationForm';
+import { ApplicationDetailPanel } from '@/components/ApplicationDetailPanel';
+import { Modal } from '@/components/Modal';
 
 const STATUS_META = [
   {
@@ -41,6 +42,7 @@ const STATUS_META = [
 }>;
 
 export default function DashboardPage() {
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const { data, isLoading, error, mutate } = useSWR('dashboard-overview', async () => {
     const [submitted, invalidated, live, determined, issues] = await Promise.all([
       listApplications('Submitted'),
@@ -159,9 +161,12 @@ export default function DashboardPage() {
           <ul style={upcomingList}>
             {data.upcomingDeterminations.slice(0, 5).map((item) => (
               <li key={item.applicationId} style={upcomingRow}>
-                <Link href={applicationRoute(item.applicationId)} style={eventLink}>
+                <button
+                  onClick={() => setSelectedApplicationId(item.applicationId)}
+                  style={eventLink}
+                >
                   {item.prjCodeName}
-                </Link>
+                </button>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(item.determinationDate)}</span>
               </li>
             ))}
@@ -191,6 +196,15 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {selectedApplicationId && (
+        <Modal onClose={() => setSelectedApplicationId(null)}>
+          <ApplicationDetailPanel
+            applicationId={selectedApplicationId}
+            onClose={() => setSelectedApplicationId(null)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

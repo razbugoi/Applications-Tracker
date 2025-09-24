@@ -9,6 +9,10 @@
   },
   "scripts": {
     "import:applications": "node import-applications.js",
-    "dynamodb:setup": "node setup-dynamodb-local.js"
+    "dynamodb:setup": "node setup-dynamodb-local.js",
+    "create:user": "node create-user.js",
+    "import:production": "node production-import.js",
+    "export:production": "node export-data.js",
+    "test:user": "node create-user.js --test-only"
   }
 }

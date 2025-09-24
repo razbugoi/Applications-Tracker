@@ -228,6 +228,11 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: createApplication.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApplicationsTable
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentsBucket
       Events:
         Api:
           Type: HttpApi
@@ -246,6 +251,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: listApplications.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi
@@ -264,6 +272,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: getApplication.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi
@@ -282,6 +293,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: updateApplication.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi
@@ -300,6 +314,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: createIssue.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi
@@ -318,6 +335,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: createExtension.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi
@@ -336,6 +356,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: listIssues.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi
@@ -354,6 +377,9 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: updateIssue.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApplicationsTable
       Events:
         Api:
           Type: HttpApi

@@ -1,13 +1,13 @@
 'use client';
 
-import { type CSSProperties, type KeyboardEvent } from 'react';
+import { type CSSProperties, type KeyboardEvent, useState } from 'react';
 import useSWR from 'swr';
 import { useSWRConfig } from 'swr';
-import { useRouter } from 'next/navigation';
 import { listApplications, type ApplicationDto } from '@/lib/api';
-import { applicationRoute } from '@/lib/routes';
 import councilPortals from '../../../config/council-portals.json';
 import { NewApplicationForm } from './NewApplicationForm';
+import { ApplicationDetailPanel } from './ApplicationDetailPanel';
+import { Modal } from './Modal';
 
 const PORTAL_DEFAULTS = councilPortals as Record<string, string>;
 
@@ -53,7 +53,7 @@ interface StatusPageProps {
 export function StatusPage({ status, title, subtitle }: StatusPageProps) {
   const { data, error, isLoading } = useSWR(['applications', status], () => listApplications(status));
   const { mutate } = useSWRConfig();
-  const router = useRouter();
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   const items = data?.items ?? [];
 
@@ -67,8 +67,13 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
     }
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      router.push(applicationRoute(id));
+      setSelectedApplicationId(id);
     }
+  };
+
+  const handleApplicationCreated = async (application: ApplicationDto) => {
+    await mutate(['applications', status]);
+    setSelectedApplicationId(application.applicationId);
   };
 
   return (
@@ -79,12 +84,7 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
             <h1 style={{ margin: 0 }}>{title}</h1>
             <p style={{ margin: 0, color: 'var(--text-muted)' }}>{subtitle}</p>
           </div>
-          <NewApplicationForm
-            onCreated={async (application: ApplicationDto) => {
-              await mutate(['applications', status]);
-              router.push(applicationRoute(application.applicationId));
-            }}
-          />
+          <NewApplicationForm onCreated={handleApplicationCreated} />
         </div>
       </header>
 
@@ -117,7 +117,7 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
                   return (
                     <tr
                       key={application.applicationId}
-                      onClick={() => router.push(applicationRoute(application.applicationId))}
+                      onClick={() => setSelectedApplicationId(application.applicationId)}
                       onKeyDown={(event) => handleRowKeyDown(event, application.applicationId)}
                       tabIndex={0}
                     >
@@ -176,6 +176,15 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
           </div>
         </div>
       </section>
+
+      {selectedApplicationId && (
+        <Modal onClose={() => setSelectedApplicationId(null)}>
+          <ApplicationDetailPanel
+            applicationId={selectedApplicationId}
+            onClose={() => setSelectedApplicationId(null)}
+          />
+        </Modal>
+      )}
     </main>
   );
 }

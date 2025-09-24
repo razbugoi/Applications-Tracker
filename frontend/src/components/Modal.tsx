@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 type ModalSize = 'md' | 'lg' | 'xl';
@@ -20,6 +20,10 @@ interface ModalProps {
 
 export function Modal({ title, children, onClose, size = 'lg' }: ModalProps) {
   const [container, setContainer] = useState<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  // Update the ref without causing re-renders
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const element = document.createElement('div');
@@ -29,7 +33,7 @@ export function Modal({ title, children, onClose, size = 'lg' }: ModalProps) {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current?.();
       }
     };
 
@@ -41,7 +45,7 @@ export function Modal({ title, children, onClose, size = 'lg' }: ModalProps) {
       document.body.style.overflow = previousOverflow;
       element.remove();
     };
-  }, [onClose]);
+  }, []);
 
   if (!container) {
     return null;

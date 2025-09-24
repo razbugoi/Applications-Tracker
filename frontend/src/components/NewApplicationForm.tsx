@@ -72,6 +72,11 @@ export function NewApplicationForm({ onCreated }: Props) {
     setForm((prev) => ({ ...prev, planningPortalUrl: event.target.value }));
   }, []);
 
+  const handleClose = useCallback(() => {
+    if (loading) return;
+    setOpen(false);
+  }, [loading]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -100,7 +105,7 @@ export function NewApplicationForm({ onCreated }: Props) {
         + New Application
       </button>
       {open && (
-        <Modal title="New Application" onClose={() => (loading ? undefined : setOpen(false))} size="lg">
+        <Modal title="New Application" onClose={handleClose} size="lg">
           <form onSubmit={handleSubmit} style={formStyle}>
             <div style={formGrid}>
               <label style={labelStyle}>

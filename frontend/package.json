@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && ls .next && ls .next/standalone && node ../scripts/create-deploy-manifest.mjs",
+    "build": "next build && node ../scripts/prepare-static-next.mjs",
     "start": "node .next/standalone/server.js",
     "lint": "next lint"
   },

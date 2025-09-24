@@ -10,6 +10,8 @@ backend/dist/
 frontend/.next/
 frontend/out/
 frontend/.env.local
+frontend/compute/
+frontend/deploy-manifest.json
 
 # SAM / AWS
 .aws-sam/

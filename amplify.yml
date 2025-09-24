@@ -6,6 +6,7 @@ applications:
         preBuild:
           commands:
             - npm ci
+            - ../scripts/generate-frontend-env.sh ./.env.production
         build:
           commands:
             - npm run build
@@ -15,6 +16,8 @@ applications:
           - .next/standalone/**/*
           - .next/static/**/*
           - public/**/*
+          - compute/**/*
+          - deploy-manifest.json
           - package.json
           - package-lock.json
           - next.config.js

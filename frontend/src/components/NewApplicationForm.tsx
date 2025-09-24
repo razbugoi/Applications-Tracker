@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useCallback, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import type { CSSProperties } from 'react';
 import { createApplication, type ApplicationDto } from '@/lib/api';
 import { Modal } from './Modal';
@@ -27,8 +27,49 @@ export function NewApplicationForm({ onCreated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateField = useCallback((field: keyof typeof initialState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!open) {
+      setForm(initialState);
+      setError(null);
+    }
+  }, [open]);
+
+  // Create stable update handlers for each field to prevent focus loss
+  const updatePrjCodeName = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, prjCodeName: event.target.value }));
+  }, []);
+
+  const updatePpReference = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, ppReference: event.target.value }));
+  }, []);
+
+  const updateLpaReference = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, lpaReference: event.target.value }));
+  }, []);
+
+  const updateDescription = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, description: event.target.value }));
+  }, []);
+
+  const updateCouncil = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, council: event.target.value }));
+  }, []);
+
+  const updateSubmissionDate = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, submissionDate: event.target.value }));
+  }, []);
+
+  const updateCaseOfficer = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, caseOfficer: event.target.value }));
+  }, []);
+
+  const updateCaseOfficerEmail = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, caseOfficerEmail: event.target.value }));
+  }, []);
+
+  const updatePlanningPortalUrl = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, planningPortalUrl: event.target.value }));
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -64,35 +105,35 @@ export function NewApplicationForm({ onCreated }: Props) {
             <div style={formGrid}>
               <label style={labelStyle}>
                 Project Code & Name
-                <input required value={form.prjCodeName} onChange={updateField('prjCodeName')} style={inputStyle} />
+                <input required value={form.prjCodeName} onChange={updatePrjCodeName} style={inputStyle} />
               </label>
               <label style={labelStyle}>
                 PP Reference
-                <input required value={form.ppReference} onChange={updateField('ppReference')} style={inputStyle} />
+                <input required value={form.ppReference} onChange={updatePpReference} style={inputStyle} />
               </label>
               <label style={labelStyle}>
                 LPA Reference
-                <input value={form.lpaReference} onChange={updateField('lpaReference')} style={inputStyle} />
+                <input value={form.lpaReference} onChange={updateLpaReference} style={inputStyle} />
               </label>
               <label style={labelStyle}>
                 Council
-                <input required value={form.council} onChange={updateField('council')} style={inputStyle} />
+                <input required value={form.council} onChange={updateCouncil} style={inputStyle} />
               </label>
         <label style={labelStyle}>
           Case Officer
-          <input value={form.caseOfficer} onChange={updateField('caseOfficer')} style={inputStyle} />
+          <input value={form.caseOfficer} onChange={updateCaseOfficer} style={inputStyle} />
         </label>
         <label style={labelStyle}>
           Case Officer Email
-          <input type="email" value={form.caseOfficerEmail} onChange={updateField('caseOfficerEmail')} style={inputStyle} />
+          <input type="email" value={form.caseOfficerEmail} onChange={updateCaseOfficerEmail} style={inputStyle} />
         </label>
         <label style={labelStyle}>
           Planning Portal URL
-          <input value={form.planningPortalUrl} onChange={updateField('planningPortalUrl')} style={inputStyle} />
+          <input value={form.planningPortalUrl} onChange={updatePlanningPortalUrl} style={inputStyle} />
         </label>
               <label style={labelStyle}>
                 Submission Date
-                <input required type="date" value={form.submissionDate} onChange={updateField('submissionDate')} style={inputStyle} />
+                <input required type="date" value={form.submissionDate} onChange={updateSubmissionDate} style={inputStyle} />
               </label>
             </div>
             <label style={labelStyle}>
@@ -100,7 +141,7 @@ export function NewApplicationForm({ onCreated }: Props) {
               <textarea
                 required
                 value={form.description}
-                onChange={updateField('description')}
+                onChange={updateDescription}
                 style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
               />
             </label>

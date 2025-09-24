@@ -123,8 +123,10 @@ Resources:
       PreventUserExistenceErrors: ENABLED
       CallbackURLs:
         - http://localhost:3000/callback
+        - https://main.d254cstb1eo74n.amplifyapp.com/callback
       LogoutURLs:
         - http://localhost:3000
+        - https://main.d254cstb1eo74n.amplifyapp.com
 
   PlanningIdentityPool:
     Type: AWS::Cognito::IdentityPool
@@ -191,6 +193,7 @@ Resources:
           - Content-Type
         AllowOrigins:
           - http://localhost:3000
+          - https://main.d254cstb1eo74n.amplifyapp.com
         MaxAge: 600
       Auth:
         Authorizers:

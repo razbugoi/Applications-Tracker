@@ -11,13 +11,9 @@ applications:
           commands:
             - npm run build
       artifacts:
-        baseDirectory: .
+        baseDirectory: out
         files:
-          - .next/static/**/*
-          - _next/static/**/*
-          - public/**/*
-          - index.html
-          - 404.html
+          - '**/*'
       cache:
         paths:
           - node_modules/**/*

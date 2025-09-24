@@ -57,7 +57,6 @@ if (!notFoundCopied) {
     .join(', ');
   throw new Error(`Missing Next.js not-found page. Checked paths: ${searchedPaths}`);
 }
-
 if (await fileExists(nextStaticSrc)) {
   await fs.rm(nextStaticRootDest, { recursive: true, force: true });
   await fs.mkdir(nextStaticRootDest, { recursive: true });

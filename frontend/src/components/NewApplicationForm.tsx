@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import type { CSSProperties } from 'react';
 import { createApplication, type ApplicationDto } from '@/lib/api';
 import { Modal } from './Modal';
@@ -27,9 +27,9 @@ export function NewApplicationForm({ onCreated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateField = (field: keyof typeof initialState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const updateField = useCallback((field: keyof typeof initialState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
-  };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

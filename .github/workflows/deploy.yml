@@ -39,7 +39,7 @@ jobs:
             exit 1
           fi
 
-          DB_URL=$(python scripts/ci/resolve_supabase_db_url.py)
+          DB_URL=$(python ../scripts/ci/resolve_supabase_db_url.py)
 
           supabase db push --db-url "$DB_URL"
 

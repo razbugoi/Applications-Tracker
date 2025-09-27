@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { listApplications, type ApplicationDto } from '@/lib/api';
+import { listApplications, SWR_KEYS, type ApplicationDto } from '@/lib/api';
 import type { CSSProperties } from 'react';
 
 interface DistributionItem {
@@ -11,7 +11,7 @@ interface DistributionItem {
 }
 
 export function OutcomeSummary() {
-  const { data, error, isLoading } = useSWR('outcome-summary', async () => {
+  const { data, error, isLoading } = useSWR(SWR_KEYS.outcomeSummary(), async () => {
     const response = await listApplications('Determined');
     return response.items;
   });
@@ -159,7 +159,7 @@ function SummaryCard({
   );
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) {
     return '—';
   }
@@ -235,4 +235,3 @@ const messageStyle: CSSProperties = {
   textAlign: 'center',
   color: 'var(--text-muted)',
 };
-

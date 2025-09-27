@@ -216,7 +216,6 @@ function buildLive(row, context) {
     submissionDate: base.submissionDate,
     validationDate: base.validationDate,
     caseOfficer: base.caseOfficer,
-    determinationDate: base.determinationDate,
     eotDate: base.eotDate,
     planningPortalUrl: base.planningPortalUrl,
   });
@@ -240,7 +239,7 @@ function buildDetermined(row, context) {
     return base;
   }
 
-  const outcome = normalizeText(row['Outcome']);
+  const outcome = normalizeOutcome(normalizeText(row['Outcome']));
   const determinationDate = toISODate(row['Determination date']);
 
   if (!outcome || !determinationDate) {
@@ -256,7 +255,6 @@ function buildDetermined(row, context) {
     submissionDate: base.submissionDate,
     validationDate: base.validationDate,
     caseOfficer: base.caseOfficer,
-    determinationDate: base.determinationDate,
     eotDate: base.eotDate,
     planningPortalUrl: base.planningPortalUrl,
   });
@@ -311,6 +309,31 @@ function buildBaseRow(row, options) {
     planningPortalUrl: getPlanningPortalUrl(council),
     skip: false,
   };
+}
+
+function normalizeOutcome(value) {
+  if (!value) {
+    return undefined;
+  }
+  const normalised = value.trim().toLowerCase();
+  switch (normalised) {
+    case 'approved':
+      return 'Approved';
+    case 'permitted':
+      return 'Approved';
+    case 'refused':
+      return 'Refused';
+    case 'withdrawn':
+      return 'Withdrawn';
+    case 'pending':
+      return 'Pending';
+    case 'notapplicable':
+    case 'not applicable':
+    case 'n/a':
+      return 'NotApplicable';
+    default:
+      return 'NotApplicable';
+  }
 }
 
 function loadCouncilPortals() {

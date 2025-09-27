@@ -5,7 +5,10 @@
   "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.893.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@supabase/supabase-js": "^2.45.4",
+    "commander": "^11.1.0",
+    "@aws-sdk/util-dynamodb": "^3.893.0"
   },
   "scripts": {
     "import:applications": "node import-applications.js",
@@ -13,6 +16,8 @@
     "create:user": "node create-user.js",
     "import:production": "node production-import.js",
     "export:production": "node export-data.js",
-    "test:user": "node create-user.js --test-only"
+    "test:user": "node create-user.js --test-only",
+    "health-check": "node health-check.js",
+    "migrate:supabase": "node migrate-dynamodb-to-supabase.js"
   }
 }

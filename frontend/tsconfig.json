@@ -24,8 +24,17 @@
       "@/lib/*": [
         "src/lib/*"
       ],
+      "@/server/*": [
+        "src/server/*"
+      ],
+      "@/types/*": [
+        "src/types/*"
+      ],
       "@/styles/*": [
         "src/styles/*"
+      ],
+      "@/contexts/*": [
+        "src/contexts/*"
       ]
     },
     "incremental": true,
@@ -38,6 +47,7 @@
   "include": [
     "next-env.d.ts",
     "src/**/*",
+    "tests/**/*",
     ".next/types/**/*.ts",
     "out/types/**/*.ts"
   ],

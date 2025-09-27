@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sign in to Planning Tracker</title>
+    <style>
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1f2937; }
+      .container { max-width: 480px; margin: 0 auto; padding: 32px 24px; }
+      .button { display: inline-block; margin: 24px 0; padding: 12px 18px; background: #111827; color: #ffffff; text-decoration: none; border-radius: 6px; }
+      .footer { margin-top: 32px; font-size: 12px; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Welcome back 👋</h1>
+      <p>Click the button below to securely sign in to the Planning Tracker.</p>
+      <p><a class="button" href="{{ .ConfirmationURL }}">Sign in</a></p>
+      <p>If you did not request this email you can safely ignore it.</p>
+      <p class="footer">Sent via Supabase Auth · Planning Tracker</p>
+    </div>
+  </body>
+</html>

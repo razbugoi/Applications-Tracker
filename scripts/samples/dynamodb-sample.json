@@ -1,0 +1,67 @@
+[
+  {
+    "entityType": "Application",
+    "applicationId": "c3d8d1b6-0fd5-4fb9-9f2a-30df7f70d0b1",
+    "prjCodeName": "PRJ-001 Example Build",
+    "ppReference": "PP/2024/001",
+    "lpaReference": "LPA-123",
+    "description": "Redevelopment of community centre",
+    "council": "Southwark",
+    "submissionDate": "2024-03-12",
+    "validationDate": "2024-03-20",
+    "determinationDate": null,
+    "eotDate": null,
+    "status": "Live",
+    "outcome": "Pending",
+    "notes": "Awaiting transport assessment",
+    "issuesCount": 1,
+    "caseOfficer": "Alex Smith",
+    "caseOfficerEmail": "alex.smith@southwark.gov.uk",
+    "planningPortalUrl": "https://planning.southwark.gov.uk/case/PP-2024-001",
+    "createdAt": "2024-03-12T09:15:00.000Z",
+    "updatedAt": "2024-03-21T11:45:00.000Z"
+  },
+  {
+    "entityType": "TimelineEvent",
+    "eventId": "f6a8c2f1-9c50-4ea7-8a96-3a36dcb53f6d",
+    "applicationId": "c3d8d1b6-0fd5-4fb9-9f2a-30df7f70d0b1",
+    "timestamp": "2024-03-12T09:15:00.000Z",
+    "stage": "Submitted",
+    "event": "Submission",
+    "details": "Application submitted via portal"
+  },
+  {
+    "entityType": "TimelineEvent",
+    "eventId": "7a3c5bb2-4c51-4eb8-88ad-9d2c85e43e41",
+    "applicationId": "c3d8d1b6-0fd5-4fb9-9f2a-30df7f70d0b1",
+    "timestamp": "2024-03-20T14:35:00.000Z",
+    "stage": "Live",
+    "event": "Validated",
+    "details": "Validation confirmed"
+  },
+  {
+    "entityType": "Issue",
+    "issueId": "44e2f203-284d-4b8a-9b7e-e4f9c2bb20ce",
+    "applicationId": "c3d8d1b6-0fd5-4fb9-9f2a-30df7f70d0b1",
+    "title": "Transport statement required",
+    "category": "Documentation",
+    "description": "Need updated traffic counts",
+    "raisedBy": "Transport officer",
+    "dateRaised": "2024-03-21",
+    "assignedTo": "Jamie",
+    "status": "Open",
+    "dueDate": "2024-04-05",
+    "createdAt": "2024-03-21T10:00:00.000Z",
+    "updatedAt": "2024-03-21T10:00:00.000Z"
+  },
+  {
+    "entityType": "ExtensionOfTime",
+    "extensionId": "7e5eaa4b-7f1f-4d0d-a3a0-2af5d92770d5",
+    "applicationId": "c3d8d1b6-0fd5-4fb9-9f2a-30df7f70d0b1",
+    "requestedDate": "2024-05-01",
+    "agreedDate": "2024-06-15",
+    "notes": "Agreed via email",
+    "createdAt": "2024-04-02T09:00:00.000Z",
+    "updatedAt": "2024-04-02T09:00:00.000Z"
+  }
+]

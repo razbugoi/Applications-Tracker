@@ -1,0 +1,2 @@
+# BudgetName,TimeUnit,BudgetType,LimitAmount,LimitUnit,ActualAmount,ActualUnit,ForecastAmount,ForecastUnit
+PlanningTrackerFreeTierGuard,MONTHLY,COST,10,GBP,0.00,GBP,0.00,GBP

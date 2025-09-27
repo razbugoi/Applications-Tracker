@@ -1,302 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, FormEvent, ChangeEvent } from 'react';
-import { differenceInCalendarDays, format } from 'date-fns';
-import useSWR, { useSWRConfig } from 'swr';
-import {
-  createExtension,
-  createIssue,
-  fetchApplication,
-  updateApplication,
-  updateIssue,
-  type ApplicationAggregateDto,
-} from '@/lib/api';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
+import useSWR from 'swr';
+import { format } from 'date-fns';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { fetchApplication, SWR_KEYS, type ApplicationAggregateDto } from '@/lib/api';
+import { useAppNavigation } from '@/lib/useAppNavigation';
 
 interface Props {
   applicationId: string;
-  onClose?: () => void;
 }
 
-const statuses = ['Submitted', 'Invalidated', 'Live', 'Determined'] as const;
-
-const issueCategories = ['Validation', 'Technical', 'Design', 'Documentation', 'Other'];
-
-const emptyIssue = {
-  title: '',
-  category: 'Validation',
-  description: '',
-  dueDate: '',
-  assignedTo: '',
-  raisedBy: '',
-  dateRaised: new Date().toISOString().slice(0, 10),
-};
-
-const emptyExtension = {
-  requestedDate: '',
-  agreedDate: '',
-  notes: '',
-};
-
-type CoreDraft = {
-  prjCodeName: string;
-  ppReference: string;
-  lpaReference?: string;
-  description: string;
-  council: string;
-  submissionDate: string;
-  validationDate?: string;
-  determinationDate?: string;
-  outcome?: string;
-  caseOfficer?: string;
-  caseOfficerEmail?: string;
-  planningPortalUrl?: string;
-  notes?: string;
-};
-
-const OUTCOME_OPTIONS = ['Approved', 'Refused', 'Withdrawn', 'Pending', 'NotApplicable'] as const;
-
-export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
-  const { mutate: globalMutate } = useSWRConfig();
-  const { data, error, isLoading, mutate } = useSWR<ApplicationAggregateDto>(
-    ['application', applicationId],
+export function ApplicationDetailPanel({ applicationId }: Props) {
+  const { data, error, isLoading } = useSWR<ApplicationAggregateDto>(
+    SWR_KEYS.applicationAggregate(applicationId),
     () => fetchApplication(applicationId)
   );
-  const [issueForm, setIssueForm] = useState(emptyIssue);
-  const [issueError, setIssueError] = useState<string | null>(null);
-  const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
-  const [extensionForm, setExtensionForm] = useState(emptyExtension);
-  const [extensionError, setExtensionError] = useState<string | null>(null);
-  const [coreDraft, setCoreDraft] = useState<CoreDraft | null>(null);
-  const [coreError, setCoreError] = useState<string | null>(null);
-  const [coreSaving, setCoreSaving] = useState(false);
 
-
-  useEffect(() => {
-    setCoreDraft(null);
-  }, [applicationId]);
-
-  async function handleCreateIssue(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!data) {
-      return;
-    }
-    setIssueError(null);
-    try {
-      await createIssue(data.application.applicationId, {
-        ...issueForm,
-        ppReference: data.application.ppReference,
-        lpaReference: data.application.lpaReference,
-      });
-      setIssueForm(emptyIssue);
-      await mutate();
-      await refreshColumns();
-    } catch (err) {
-      setIssueError(err instanceof Error ? err.message : 'Failed to create issue');
-    }
-  }
-
-  async function handleResolveIssue(issueId: string) {
-    const resolutionNotes = window.prompt('Provide resolution notes');
-    if (!resolutionNotes) {
-      return;
-    }
-    try {
-      await updateIssue(applicationId, issueId, {
-        status: 'Resolved',
-        resolutionNotes,
-        dateResolved: new Date().toISOString().slice(0, 10),
-      });
-      await mutate();
-      await refreshColumns();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to resolve issue');
-    }
-  }
-
-  async function handleTransition(targetStatus: (typeof statuses)[number]) {
-    if (!data) {
-      return;
-    }
-    setTransitionMessage(null);
-    const payload: Record<string, unknown> = { status: targetStatus };
-    if (targetStatus === 'Live' && !data.application.validationDate) {
-      payload.validationDate = new Date().toISOString().slice(0, 10);
-    }
-    if (targetStatus === 'Determined') {
-      const outcome = window.prompt('Decision outcome (Approved / Refused / Withdrawn / Pending)');
-      const determinationDate = window.prompt('Determination date (YYYY-MM-DD)', new Date().toISOString().slice(0, 10));
-      if (!outcome || !determinationDate) {
-        return;
-      }
-      payload.outcome = outcome;
-      payload.determinationDate = determinationDate;
-    }
-    try {
-      await updateApplication(applicationId, payload);
-      await mutate();
-      await refreshColumns();
-      setTransitionMessage(`Updated status to ${targetStatus}`);
-    } catch (err) {
-      setTransitionMessage(err instanceof Error ? err.message : 'Failed to update status');
-    }
-  }
-
-  async function handleCreateExtension(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!data || data.application.status !== 'Live') {
-      return;
-    }
-    setExtensionError(null);
-    try {
-      if (!extensionForm.agreedDate) {
-        throw new Error('Agreed date is required');
-      }
-      await createExtension(applicationId, {
-        agreedDate: extensionForm.agreedDate,
-        requestedDate: extensionForm.requestedDate || undefined,
-        notes: extensionForm.notes || undefined,
-      });
-      setExtensionForm(emptyExtension);
-      await mutate();
-      await refreshColumns();
-    } catch (error) {
-      setExtensionError(error instanceof Error ? error.message : 'Failed to record extension');
-    }
-  }
-
-  async function refreshColumns() {
-    const applicationMutations = statuses.map((status) => globalMutate(['applications', status]));
-    const issuesMutation = globalMutate((key) => Array.isArray(key) && key[0] === 'issues');
-    const extensionMutation = globalMutate(['application', applicationId]);
-    await Promise.all([...applicationMutations, issuesMutation, extensionMutation]);
-  }
-
-  const editingCore = coreDraft !== null;
-
-  function startEditingCore() {
-    if (!data) {
-      return;
-    }
-    setCoreError(null);
-    setCoreDraft({
-      prjCodeName: data.application.prjCodeName,
-      ppReference: data.application.ppReference,
-      lpaReference: data.application.lpaReference,
-      description: data.application.description,
-      council: data.application.council,
-      submissionDate: data.application.submissionDate,
-      validationDate: data.application.validationDate ?? '',
-      determinationDate: data.application.determinationDate ?? '',
-      outcome: data.application.outcome ?? 'Pending',
-      caseOfficer: data.application.caseOfficer ?? '',
-      caseOfficerEmail: data.application.caseOfficerEmail ?? '',
-      planningPortalUrl: data.application.planningPortalUrl ?? '',
-      notes: data.application.notes ?? '',
-    });
-  }
-
-  function updateCoreDraft(field: keyof CoreDraft, value: string) {
-    setCoreDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
-  }
-
-  function cancelEditingCore() {
-    setCoreDraft(null);
-    setCoreError(null);
-    setCoreSaving(false);
-  }
-
-  async function saveCoreDraft() {
-    if (!data || !coreDraft) {
-      return;
-    }
-    setCoreSaving(true);
-    setCoreError(null);
-    try {
-      const payload: Record<string, unknown> = {};
-      const current = data.application;
-
-      const assign = (
-        key: keyof CoreDraft,
-        transform?: (value: string) => string | null | undefined,
-        required = false
-      ) => {
-        const nextRaw = coreDraft[key];
-        const nextValue = typeof transform === 'function' ? transform(nextRaw ?? '') : nextRaw;
-        const normalized = typeof nextValue === 'string' ? nextValue.trim() : nextValue;
-
-        if (required && !normalized) {
-          throw new Error('Please fill all required fields before saving.');
-        }
-
-        const currentValue = (current as unknown as Record<string, unknown>)[key];
-        const comparableCurrent = typeof currentValue === 'string' ? currentValue?.toString() : currentValue;
-        const comparableNext = normalized === '' ? '' : normalized;
-
-        if ((comparableNext ?? null) !== (comparableCurrent ?? null)) {
-          payload[key] = normalized === '' ? null : normalized;
-        }
-      };
-
-      assign('prjCodeName', undefined, true);
-      assign('ppReference', undefined, true);
-      assign('lpaReference');
-      assign('description', undefined, true);
-      assign('council', undefined, true);
-      assign('submissionDate', undefined, true);
-      assign('validationDate');
-      assign('determinationDate');
-      assign('outcome');
-      assign('caseOfficer');
-      assign('caseOfficerEmail');
-      assign('planningPortalUrl');
-      assign('notes');
-
-      if (Object.keys(payload).length === 0) {
-        cancelEditingCore();
-        return;
-      }
-
-      await updateApplication(applicationId, payload);
-      await mutate();
-      await refreshColumns();
-      cancelEditingCore();
-    } catch (error) {
-      setCoreError(error instanceof Error ? error.message : 'Failed to save changes');
-    } finally {
-      setCoreSaving(false);
-    }
-  }
-
-  const timelineSegments = useMemo(() => {
-    if (!data || !data.timeline || data.timeline.length === 0) {
-      return [];
-    }
-    const sorted = [...data.timeline].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    const segments = sorted.map((event, index) => {
-      const startDate = new Date(event.timestamp);
-      const next = sorted[index + 1];
-      const endDate = next ? new Date(next.timestamp) : new Date();
-      const rawDuration = differenceInCalendarDays(endDate, startDate);
-      const duration = Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 1;
-      return {
-        ...event,
-        startDate,
-        endDate,
-        duration,
-      };
-    });
-    const totalDuration = segments.reduce((sum, segment) => sum + segment.duration, 0) || segments.length;
-    return segments.map((segment) => ({
-      ...segment,
-      widthPercent: Math.max((segment.duration / totalDuration) * 100, 12),
-    }));
-  }, [data?.timeline]);
+  const { goToApplication } = useAppNavigation();
 
   if (isLoading) {
     return (
       <div style={panelStyle}>
-        <p>Loading application…</p>
+        <LoadingSpinner size="md" message="Loading application…" />
       </div>
     );
   }
@@ -305,457 +31,245 @@ export function ApplicationDetailPanel({ applicationId, onClose }: Props) {
     return (
       <div style={panelStyle}>
         <p style={{ color: 'var(--danger)' }}>Unable to load application</p>
-        {onClose && (
-          <button type="button" style={secondaryButton} onClick={onClose}>
-            Close
-          </button>
-        )}
       </div>
     );
   }
 
-  const extensions = data.extensions ?? [];
-  const isLive = data.application.status === 'Live';
+  const { application, issues, timeline } = data;
+  const issueSummary = useMemo(() => buildIssueSummary(issues ?? []), [issues]);
+  const timelineSummary = useMemo(() => buildTimelineSummary(timeline ?? []), [timeline]);
+  const detailItems = buildDetailItems(application);
 
   return (
     <div style={panelStyle}>
-      <header style={panelHeader}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={panelSubtitle}>{data.application.ppReference}</span>
-          <h2 style={{ margin: 0 }}>{data.application.prjCodeName}</h2>
-          <p style={{ margin: '4px 0', color: 'var(--text-muted)' }}>{data.application.description}</p>
+      <header style={summaryCard}>
+        <div style={summaryHeader}>
+          <div style={summaryTitleBlock}>
+            <span style={panelSubtitle}>{application.ppReference}</span>
+            <h2 style={{ margin: 0, fontSize: 24 }}>{application.prjCodeName}</h2>
+            {application.description ? (
+              <p style={summaryDescription}>{application.description}</p>
+            ) : null}
+          </div>
+          <div style={summaryMetaColumn}>
+            <div style={statusBadge(application.status)}>{application.status ?? 'Unknown'}</div>
+            <nav style={actionGroup} aria-label="Application navigation">
+              <button type="button" style={primaryButton} onClick={() => goToApplication(application.applicationId, 'edit')}>
+                Edit details
+              </button>
+              <button type="button" style={secondaryButton} onClick={() => goToApplication(application.applicationId, 'issues')}>
+                Manage issues
+              </button>
+              <button type="button" style={secondaryButton} onClick={() => goToApplication(application.applicationId, 'timeline')}>
+                View timeline
+              </button>
+            </nav>
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-          <div style={badge(stageColorBadge(data.application.status))}>{data.application.status}</div>
-          {onClose && (
-            <button type="button" style={secondaryButton} onClick={onClose}>
-              Close
-            </button>
-          )}
+        <div style={summaryStatsRow}>
+          <div style={summaryStat}>
+            <span style={summaryStatLabel}>Submission</span>
+            <span style={summaryStatValue}>{formatDate(application.submissionDate)}</span>
+          </div>
+          <div style={summaryStat}>
+            <span style={summaryStatLabel}>Validation</span>
+            <span style={summaryStatValue}>{formatDate(application.validationDate)}</span>
+          </div>
+          <div style={summaryStat}>
+            <span style={summaryStatLabel}>Determination</span>
+            <span style={summaryStatValue}>{formatDate(application.determinationDate)}</span>
+          </div>
+          <div style={summaryStat}>
+            <span style={summaryStatLabel}>Outcome</span>
+            <span style={summaryStatValue}>{application.outcome ?? '—'}</span>
+          </div>
         </div>
       </header>
 
       <section style={sectionStyle}>
-        <div style={sectionHeaderRow}>
-          <h3 style={sectionTitle}>Key Details</h3>
-          {editingCore ? (
-            <div style={coreActions}>
-              <button type="button" style={secondaryButton} onClick={cancelEditingCore} disabled={coreSaving}>
-                Cancel
-              </button>
-              <button type="button" style={primaryButton} onClick={saveCoreDraft} disabled={coreSaving}>
-                {coreSaving ? 'Saving…' : 'Save'}
-              </button>
+        <header style={sectionHeader}>
+          <h3 style={sectionTitle}>Key details</h3>
+        </header>
+        <div style={detailGrid}>
+          {detailItems.map((item) => (
+            <div
+              key={item.label}
+              style={{
+                ...detailCard,
+                ...(item.layout === 'wide' ? detailCardWide : null),
+              }}
+            >
+              <span style={detailLabel}>{item.label}</span>
+              <span style={detailValue}>{item.value}</span>
             </div>
-          ) : (
-            <button type="button" style={primaryButton} onClick={startEditingCore}>
-              Edit Details
-            </button>
-          )}
+          ))}
         </div>
-        {coreError && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{coreError}</p>}
-        {editingCore ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveCoreDraft();
-            }}
-            style={coreFormStyle}
+      </section>
+
+      <section style={sectionStyle}>
+        <header style={sectionHeader}>
+          <h3 style={sectionTitle}>Issues</h3>
+          <button
+            type="button"
+            style={linkButton}
+            onClick={() => goToApplication(application.applicationId, 'issues')}
           >
-            <div style={coreFormGrid}>
-              <label style={labelStyle}>
-                Project Code & Name
-                <input
-                  required
-                  value={coreDraft?.prjCodeName ?? ''}
-                  onChange={(event) => updateCoreDraft('prjCodeName', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                PP Reference
-                <input
-                  required
-                  value={coreDraft?.ppReference ?? ''}
-                  onChange={(event) => updateCoreDraft('ppReference', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                LPA Reference
-                <input
-                  value={coreDraft?.lpaReference ?? ''}
-                  onChange={(event) => updateCoreDraft('lpaReference', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Council
-                <input
-                  required
-                  value={coreDraft?.council ?? ''}
-                  onChange={(event) => updateCoreDraft('council', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Submission Date
-                <input
-                  required
-                  type="date"
-                  value={coreDraft?.submissionDate ?? ''}
-                  onChange={(event) => updateCoreDraft('submissionDate', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Validation Date
-                <input
-                  type="date"
-                  value={coreDraft?.validationDate ?? ''}
-                  onChange={(event) => updateCoreDraft('validationDate', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Determination Date
-                <input
-                  type="date"
-                  value={coreDraft?.determinationDate ?? ''}
-                  onChange={(event) => updateCoreDraft('determinationDate', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Outcome
-                <select
-                  value={coreDraft?.outcome ?? 'Pending'}
-                  onChange={(event) => updateCoreDraft('outcome', event.target.value)}
-                  style={inputStyle}
-                >
-                  {OUTCOME_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={labelStyle}>
-                Case Officer
-                <input
-                  value={coreDraft?.caseOfficer ?? ''}
-                  onChange={(event) => updateCoreDraft('caseOfficer', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Case Officer Email
-                <input
-                  type="email"
-                  value={coreDraft?.caseOfficerEmail ?? ''}
-                  onChange={(event) => updateCoreDraft('caseOfficerEmail', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-              <label style={labelStyle}>
-                Planning Portal URL
-                <input
-                  value={coreDraft?.planningPortalUrl ?? ''}
-                  onChange={(event) => updateCoreDraft('planningPortalUrl', event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-            </div>
-            <label style={labelStyle}>
-              Description
-              <textarea
-                required
-                value={coreDraft?.description ?? ''}
-                onChange={(event) => updateCoreDraft('description', event.target.value)}
-                style={{ ...inputStyle, minHeight: 120 }}
-              />
-            </label>
-            <label style={labelStyle}>
-              Notes
-              <textarea
-                value={coreDraft?.notes ?? ''}
-                onChange={(event) => updateCoreDraft('notes', event.target.value)}
-                style={{ ...inputStyle, minHeight: 80 }}
-              />
-            </label>
-            <div style={coreButtons}>
-              <button type="button" style={secondaryButton} onClick={cancelEditingCore} disabled={coreSaving}>
-                Cancel
-              </button>
-              <button type="submit" style={primaryButton} disabled={coreSaving}>
-                {coreSaving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
+            Go to issues →
+          </button>
+        </header>
+        {issueSummary.total === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>No issues recorded for this application.</p>
         ) : (
-          <dl style={detailGrid}>
-            <dt>PP Reference</dt>
-            <dd>{data.application.ppReference}</dd>
-            <dt>LPA Reference</dt>
-            <dd>{data.application.lpaReference ?? '—'}</dd>
-            <dt>Council</dt>
-            <dd>{data.application.council}</dd>
-            <dt>Planning Portal</dt>
-            <dd>
-              {data.application.planningPortalUrl ? (
-                <a href={data.application.planningPortalUrl} target="_blank" rel="noopener noreferrer">
-                  {data.application.planningPortalUrl}
-                </a>
-              ) : (
-                <span style={{ color: 'var(--text-muted)' }}>Not set</span>
-              )}
-            </dd>
-            <dt>Submission Date</dt>
-            <dd>{formatDate(data.application.submissionDate)}</dd>
-            <dt>Validation Date</dt>
-            <dd>{formatDate(data.application.validationDate)}</dd>
-            <dt>Determination Date</dt>
-            <dd>{formatDate(data.application.determinationDate)}</dd>
-            <dt>EOT</dt>
-            <dd>{formatDate(data.application.eotDate)}</dd>
-            <dt>Outcome</dt>
-            <dd>{data.application.outcome ?? '—'}</dd>
-            <dt>Case Officer</dt>
-            <dd>
-              {data.application.caseOfficer ? (
-                data.application.caseOfficerEmail ? (
-                  <a href={`mailto:${data.application.caseOfficerEmail}`}>
-                    {data.application.caseOfficer}
-                  </a>
-                ) : (
-                  data.application.caseOfficer
-                )
-              ) : (
-                '—'
-              )}
-            </dd>
-            {data.application.notes && (
-              <>
-                <dt>Notes</dt>
-                <dd>{data.application.notes}</dd>
-              </>
-            )}
-          </dl>
+          <div style={issueSummaryGrid}>
+            <div style={issueStat}>
+              <span style={issueStatValue}>{issueSummary.total}</span>
+              <span style={issueStatLabel}>Total issues</span>
+            </div>
+            <div style={issueList}>
+              {issueSummary.top.map((issue) => (
+                <div key={issue.issueId} style={issueListItem}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontWeight: 600 }}>{issue.title}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {issue.category} • {issue.status}
+                    </span>
+                  </div>
+                  <span style={issueTag}>{formatDate(issue.dueDate)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </section>
 
       <section style={sectionStyle}>
-        <h3 style={sectionTitle}>Extensions of Time</h3>
-        {data.application.status !== 'Live' && (
-          <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-            Extensions can only be added while the application is Live.
-          </p>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {extensions.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No extensions recorded.</p>}
-          {extensions.map((extension) => (
-            <div key={extension.extensionId} style={extensionCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600 }}>{formatDate(extension.agreedDate)}</span>
-                {extension.requestedDate && (
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Requested {formatDate(extension.requestedDate)}</span>
-                )}
-              </div>
-              {extension.notes && <p style={{ margin: '4px 0 0', fontSize: 13 }}>{extension.notes}</p>}
-            </div>
-          ))}
-        </div>
-
-        <form onSubmit={handleCreateExtension} style={extensionFormStyle}>
-          <h4 style={{ margin: '0 0 8px' }}>Log Extension</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            <label style={labelStyle}>
-              Requested Date
-              <input
-                type="date"
-                value={extensionForm.requestedDate}
-                onChange={(event) => setExtensionForm((prev) => ({ ...prev, requestedDate: event.target.value }))}
-                style={inputStyle}
-                disabled={!isLive}
-              />
-            </label>
-            <label style={labelStyle}>
-              Agreed Date
-              <input
-                required
-                type="date"
-                value={extensionForm.agreedDate}
-                onChange={(event) => setExtensionForm((prev) => ({ ...prev, agreedDate: event.target.value }))}
-                style={inputStyle}
-                disabled={!isLive}
-              />
-            </label>
-          </div>
-          <label style={labelStyle}>
-            Notes
-            <textarea
-              value={extensionForm.notes}
-              onChange={(event) => setExtensionForm((prev) => ({ ...prev, notes: event.target.value }))}
-              style={{ ...inputStyle, minHeight: 60 }}
-              disabled={!isLive}
-            />
-          </label>
-          {extensionError && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{extensionError}</p>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" style={primaryButton} disabled={!isLive}>
-              Save Extension
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section style={sectionStyle}>
-        <h3 style={sectionTitle}>Status Actions</h3>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" style={actionButton} onClick={() => handleTransition('Live')}>
-            Mark Live
+        <header style={sectionHeader}>
+          <h3 style={sectionTitle}>Timeline</h3>
+          <button
+            type="button"
+            style={linkButton}
+            onClick={() => goToApplication(application.applicationId, 'timeline')}
+          >
+            Open timeline →
           </button>
-          <button type="button" style={actionButton} onClick={() => handleTransition('Invalidated')}>
-            Flag Invalidated
-          </button>
-          <button type="button" style={actionButton} onClick={() => handleTransition('Determined')}>
-            Record Decision
-          </button>
-        </div>
-        {transitionMessage && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{transitionMessage}</p>}
-      </section>
-
-      <section style={sectionStyle}>
-        <h3 style={sectionTitle}>Issues</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {data.issues.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No issues logged</p>}
-          {data.issues.map((issue) => (
-            <div key={issue.issueId} style={issueCard(issue.status)}>
-              <header style={issueHeader}>
-                <div>
-                  <strong>{issue.title}</strong>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{issue.category}</div>
+        </header>
+        {timelineSummary.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>No timeline events recorded yet.</p>
+        ) : (
+          <ul style={timelineList}>
+            {timelineSummary.map((item) => (
+              <li key={item.eventId} style={timelineItem}>
+                <span style={timelineStage}>{item.stage}</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontWeight: 600 }}>{item.event}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.range}</span>
                 </div>
-                {issue.status !== 'Resolved' && issue.status !== 'Closed' && (
-                  <button type="button" style={resolveButton} onClick={() => handleResolveIssue(issue.issueId)}>
-                    Resolve
-                  </button>
-                )}
-              </header>
-              <p style={{ margin: '6px 0 8px' }}>{issue.description}</p>
-              <dl style={issueMeta}>
-                <dt>Status</dt>
-                <dd>{issue.status}</dd>
-                <dt>Due</dt>
-                <dd>{formatDate(issue.dueDate)}</dd>
-                <dt>Assigned To</dt>
-                <dd>{issue.assignedTo ?? '—'}</dd>
-                <dt>Raised</dt>
-                <dd>{formatDate(issue.dateRaised)}</dd>
-                {issue.resolutionNotes && (
-                  <>
-                    <dt>Resolution</dt>
-                    <dd>{issue.resolutionNotes}</dd>
-                  </>
-                )}
-              </dl>
-            </div>
-          ))}
-        </div>
-        <form onSubmit={handleCreateIssue} style={issueFormStyle}>
-          <h4 style={{ margin: 0 }}>Add Issue</h4>
-          <label style={labelStyle}>
-            Title
-            <input required value={issueForm.title} onChange={updateIssueField('title')} style={inputStyle} />
-          </label>
-          <label style={labelStyle}>
-            Category
-            <select value={issueForm.category} onChange={updateIssueField('category')} style={inputStyle}>
-              {issueCategories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-          </label>
-          <label style={labelStyle}>
-            Description
-            <textarea required value={issueForm.description} onChange={updateIssueField('description')} style={{ ...inputStyle, minHeight: 80 }} />
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label style={labelStyle}>
-              Raised By
-              <input value={issueForm.raisedBy} onChange={updateIssueField('raisedBy')} style={inputStyle} />
-            </label>
-            <label style={labelStyle}>
-              Assigned To
-              <input value={issueForm.assignedTo} onChange={updateIssueField('assignedTo')} style={inputStyle} />
-            </label>
-            <label style={labelStyle}>
-              Date Raised
-              <input type="date" value={issueForm.dateRaised} onChange={updateIssueField('dateRaised')} style={inputStyle} />
-            </label>
-            <label style={labelStyle}>
-              Due Date
-              <input type="date" value={issueForm.dueDate} onChange={updateIssueField('dueDate')} style={inputStyle} />
-            </label>
-          </div>
-          {issueError && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{issueError}</p>}
-          <button type="submit" style={primaryButton}>
-            Add Issue
-          </button>
-        </form>
-      </section>
-
-      <section style={sectionStyle}>
-        <h3 style={sectionTitle}>Timeline</h3>
-        {timelineSegments.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No timeline events recorded.</p>}
-        {timelineSegments.length > 0 && (
-          <div style={timelineWrapper}>
-            <div style={ganttContainer}>
-              {timelineSegments.map((segment) => (
-                <div
-                  key={segment.eventId}
-                  style={{
-                    ...ganttSegment,
-                    background: stageColorBadge(segment.stage),
-                    flexGrow: segment.duration,
-                    flexBasis: `${segment.widthPercent}%`,
-                  }}
-                >
-                  <span style={ganttLabel}>{segment.event}</span>
-                  <span style={ganttDates}>
-                    {format(segment.startDate, 'dd MMM yyyy')} → {format(segment.endDate, 'dd MMM yyyy')}
-                  </span>
-                  {segment.details && <span style={ganttDetails}>{segment.details}</span>}
-                </div>
-              ))}
-            </div>
-            <div style={timelineLegend}>
-              {timelineSegments.map((segment) => (
-                <div key={`${segment.eventId}-legend`} style={legendItem}>
-                  <span
-                    style={{
-                      ...legendDot,
-                      background: stageColorBadge(segment.stage),
-                    }}
-                  />
-                  <span>{segment.stage}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>
   );
-
-  function updateIssueField(field: keyof typeof emptyIssue) {
-    return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setIssueForm((prev) => ({ ...prev, [field]: event.target.value }));
-    };
-  }
 }
 
-function stageColorBadge(status?: string) {
+function buildIssueSummary(issues: ApplicationAggregateDto['issues']): {
+  total: number;
+  top: typeof issues;
+} {
+  const total = issues.length;
+  const top = issues.slice(0, 3);
+  return { total, top };
+}
+
+function buildTimelineSummary(timeline: ApplicationAggregateDto['timeline']) {
+  return timeline.slice(0, 4).map((event) => {
+    const start = formatDate(event.timestamp);
+    return {
+      eventId: event.eventId,
+      event: event.event,
+      stage: event.stage,
+      range: start,
+    };
+  });
+}
+
+function buildDetailItems(application: ApplicationAggregateDto['application']): DetailItem[] {
+  const portalUrl = application.planningPortalUrl
+    ? (
+        <a href={application.planningPortalUrl} target="_blank" rel="noopener noreferrer" style={detailLink}>
+          Visit portal ↗
+        </a>
+      )
+    : (
+        <span style={mutedText}>Not provided</span>
+      );
+
+  const caseOfficer = application.caseOfficer
+    ? application.caseOfficerEmail
+      ? (
+          <a href={`mailto:${application.caseOfficerEmail}`} style={detailLink}>
+            {application.caseOfficer}
+          </a>
+        )
+      : (
+          application.caseOfficer
+        )
+    : (
+        <span style={mutedText}>—</span>
+      );
+
+  return [
+    { label: 'PP reference', value: application.ppReference ?? '—' },
+    { label: 'LPA reference', value: application.lpaReference ?? '—' },
+    { label: 'Council', value: application.council ?? '—' },
+    { label: 'Planning portal', value: portalUrl },
+    { label: 'Case officer', value: caseOfficer },
+    {
+      label: 'Case officer email',
+      value: application.caseOfficerEmail ? (
+        <a href={`mailto:${application.caseOfficerEmail}`} style={detailLink}>
+          {application.caseOfficerEmail}
+        </a>
+      ) : (
+        <span style={mutedText}>Not provided</span>
+      ),
+    },
+    { label: 'Submission date', value: formatDate(application.submissionDate) },
+    { label: 'Validation date', value: formatDate(application.validationDate) },
+    { label: 'Determination date', value: formatDate(application.determinationDate) },
+    { label: 'Extension of time', value: formatDate(application.eotDate) },
+    { label: 'Outcome', value: application.outcome ?? '—' },
+    {
+      label: 'Notes',
+      value: application.notes ? application.notes : <span style={mutedText}>No internal notes</span>,
+      layout: 'wide',
+    },
+  ];
+}
+
+interface DetailItem {
+  label: string;
+  value: ReactNode;
+  layout?: 'wide';
+}
+
+function statusBadge(status?: string): CSSProperties {
+  const color = stageColor(status);
+  return {
+    alignSelf: 'flex-start',
+    padding: '8px 18px',
+    borderRadius: 999,
+    color: '#fff',
+    fontWeight: 600,
+    background: color,
+    fontSize: 13,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  };
+}
+
+function stageColor(status?: string) {
   switch (status) {
     case 'Submitted':
       return '#6366f1';
@@ -770,16 +284,17 @@ function stageColorBadge(status?: string) {
   }
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) {
     return '—';
   }
   try {
-    return new Date(value).toLocaleDateString();
+    return format(new Date(value), 'dd MMM yyyy');
   } catch (error) {
     return value;
   }
 }
+
 
 const panelStyle: CSSProperties = {
   display: 'flex',
@@ -789,249 +304,269 @@ const panelStyle: CSSProperties = {
   width: '100%',
 };
 
-const panelHeader: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  gap: 24,
+const panelSubtitle: CSSProperties = {
+  fontSize: 14,
+  color: 'var(--text-muted)',
 };
 
-const badge = (background: string): CSSProperties => ({
-  display: 'inline-block',
-  background,
-  color: '#fff',
-  borderRadius: 999,
-  padding: '4px 12px',
-  fontSize: 12,
-  fontWeight: 600,
-  marginTop: 6,
-});
-
-const sectionStyle: CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 16,
-  padding: 20,
-  background: 'var(--surface)',
+const summaryCard: CSSProperties = {
+  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(238, 242, 255, 0.6))',
+  borderRadius: 20,
+  border: '1px solid rgba(99, 102, 241, 0.15)',
+  padding: 24,
   display: 'flex',
   flexDirection: 'column',
-  gap: 16,
+  gap: 20,
+};
+
+const summaryHeader: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 24,
+  flexWrap: 'wrap',
+};
+
+const summaryTitleBlock: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  maxWidth: 600,
+};
+
+const summaryDescription: CSSProperties = {
+  margin: 0,
+  color: 'var(--text-muted)',
+  lineHeight: 1.4,
+};
+
+const summaryMetaColumn: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 14,
+  alignItems: 'flex-end',
+  minWidth: 200,
+  flex: '1 1 auto',
+};
+
+const summaryStatsRow: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  gap: 14,
+};
+
+const summaryStat: CSSProperties = {
+  background: '#fff',
+  borderRadius: 14,
+  border: '1px solid rgba(255, 255, 255, 0.6)',
+  boxShadow: '0 6px 18px rgba(79, 70, 229, 0.08)',
+  padding: '12px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+};
+
+const summaryStatLabel: CSSProperties = {
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: 0.4,
+  color: 'var(--text-muted)',
+  fontWeight: 600,
+};
+
+const summaryStatValue: CSSProperties = {
+  fontSize: 16,
+  fontWeight: 600,
+};
+
+const actionGroup: CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
+};
+
+const sectionStyle: CSSProperties = {
+  background: 'var(--surface)',
+  borderRadius: 16,
+  border: '1px solid var(--border)',
+  padding: 20,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 14,
+};
+
+const sectionHeader: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
 };
 
 const sectionTitle: CSSProperties = {
   margin: 0,
-  fontSize: 16,
-};
-
-const sectionHeaderRow: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 12,
-};
-
-const coreActions: CSSProperties = {
-  display: 'flex',
-  gap: 8,
-};
-
-const coreFormStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-};
-
-const coreFormGrid: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: 12,
-};
-
-const coreButtons: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: 12,
-};
-
-const panelSubtitle: CSSProperties = {
-  color: 'var(--text-muted)',
-  fontSize: 13,
-  textTransform: 'uppercase',
-  letterSpacing: 0.6,
 };
 
 const detailGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'max-content 1fr',
-  gap: '4px 16px',
-  fontSize: 13,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: 14,
 };
 
-const actionButton: CSSProperties = {
-  background: 'var(--primary)',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 8,
-  padding: '8px 12px',
-  cursor: 'pointer',
+const detailCard: CSSProperties = {
+  background: '#fff',
+  borderRadius: 12,
+  border: '1px solid var(--border-subtle)',
+  padding: '14px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  minHeight: 82,
+};
+
+const detailCardWide: CSSProperties = {
+  gridColumn: '1 / -1',
+};
+
+const detailLabel: CSSProperties = {
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: 0.35,
+  color: 'var(--text-muted)',
   fontWeight: 600,
+};
+
+const detailValue: CSSProperties = {
+  fontSize: 15,
+  fontWeight: 600,
+  color: 'var(--text)',
+  lineHeight: 1.4,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
 };
 
 const primaryButton: CSSProperties = {
-  background: 'var(--primary-dark)',
+  background: 'var(--primary)',
+  border: '1px solid var(--primary)',
   color: '#fff',
-  border: 'none',
-  borderRadius: 8,
-  padding: '10px 14px',
-  cursor: 'pointer',
+  borderRadius: 999,
   fontWeight: 600,
+  padding: '8px 18px',
+  cursor: 'pointer',
+  fontSize: 13,
+  boxShadow: '0 8px 20px rgba(79, 70, 229, 0.2)',
 };
 
 const secondaryButton: CSSProperties = {
+  background: 'rgba(255, 255, 255, 0.85)',
+  border: '1px solid var(--border)',
+  color: 'var(--text)',
+  borderRadius: 999,
+  fontWeight: 600,
+  padding: '8px 16px',
+  cursor: 'pointer',
+  fontSize: 13,
+};
+
+const linkButton: CSSProperties = {
   background: 'transparent',
-  color: 'var(--text-muted)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  padding: '8px 14px',
-  cursor: 'pointer',
-};
-
-const issueCard = (status: string): CSSProperties => ({
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: 14,
-  background:
-    status === 'Resolved'
-      ? 'rgba(34, 197, 94, 0.08)'
-      : status === 'In Progress'
-      ? 'rgba(37, 99, 235, 0.08)'
-      : 'rgba(248, 250, 252, 0.9)',
-});
-
-const issueHeader: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-};
-
-const resolveButton: CSSProperties = {
-  background: 'var(--success)',
-  color: '#fff',
   border: 'none',
-  borderRadius: 6,
-  padding: '6px 10px',
+  color: 'var(--primary)',
+  fontWeight: 600,
   cursor: 'pointer',
+  fontSize: 13,
 };
 
-const issueMeta: CSSProperties = {
+const issueSummaryGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'max-content 1fr',
-  gap: '4px 12px',
-  fontSize: 12,
-  color: 'var(--text-muted)',
+  gridTemplateColumns: 'minmax(0, 200px) minmax(0, 1fr)',
+  gap: 20,
+  alignItems: 'stretch',
 };
 
-const issueFormStyle: CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 12,
+const issueStat: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05))',
+  borderRadius: 10,
   padding: 14,
-  marginTop: 12,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-  background: 'var(--surface)',
+  justifyContent: 'center',
+  textAlign: 'center',
 };
 
-const extensionFormStyle: CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: 14,
-  marginTop: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-  background: 'var(--surface)',
+const issueStatValue: CSSProperties = {
+  fontSize: 28,
+  fontWeight: 700,
 };
 
-const labelStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
+const issueStatLabel: CSSProperties = {
   fontSize: 13,
   color: 'var(--text-muted)',
 };
 
-const inputStyle: CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 8,
-  border: '1px solid var(--border)',
-  fontSize: 14,
-};
-
-const timelineWrapper: CSSProperties = {
+const issueList: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 16,
+  gap: 10,
 };
 
-const ganttContainer: CSSProperties = {
+const issueListItem: CSSProperties = {
   display: 'flex',
-  gap: 12,
-  alignItems: 'stretch',
-  minHeight: 120,
-};
-
-const ganttSegment: CSSProperties = {
-  borderRadius: 16,
-  color: '#fff',
-  padding: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  minWidth: 140,
-  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.15)',
-};
-
-const ganttLabel: CSSProperties = {
-  fontWeight: 700,
-  fontSize: 14,
-};
-
-const ganttDates: CSSProperties = {
-  fontSize: 12,
-  opacity: 0.9,
-};
-
-const ganttDetails: CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.4,
-  opacity: 0.9,
-};
-
-const timelineLegend: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 12,
-};
-
-const legendItem: CSSProperties = {
-  display: 'flex',
+  justifyContent: 'space-between',
   alignItems: 'center',
-  gap: 6,
+  gap: 16,
+  padding: '12px 16px',
+  borderRadius: 12,
+  border: '1px solid var(--border-subtle)',
+  background: '#fff',
+};
+
+const issueTag: CSSProperties = {
   fontSize: 12,
   color: 'var(--text-muted)',
+  background: 'rgba(15, 118, 110, 0.12)',
+  padding: '4px 10px',
+  borderRadius: 999,
 };
 
-const legendDot: CSSProperties = {
-  width: 10,
-  height: 10,
-  borderRadius: '50%',
-};
-
-const extensionCard: CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: 14,
-  background: 'rgba(248, 250, 252, 0.9)',
+const timelineList: CSSProperties = {
+  listStyle: 'none',
+  margin: 0,
+  padding: 0,
   display: 'flex',
   flexDirection: 'column',
+  gap: 10,
+};
+
+const timelineItem: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  padding: '14px 16px',
+  borderRadius: 14,
+  border: '1px solid var(--border-subtle)',
+  background: '#fff',
+};
+
+const timelineStage: CSSProperties = {
+  padding: '5px 10px',
+  borderRadius: 999,
+  background: 'rgba(15, 118, 110, 0.12)',
+  color: 'var(--primary)',
+  fontSize: 11.5,
+  fontWeight: 600,
+};
+
+const detailLink: CSSProperties = {
+  color: 'var(--primary)',
+  fontWeight: 600,
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
   gap: 6,
+};
+
+const mutedText: CSSProperties = {
+  color: 'var(--text-muted)',
+  fontWeight: 500,
 };

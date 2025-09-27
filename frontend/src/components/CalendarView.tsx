@@ -1,13 +1,9 @@
 'use client';
 
 import useSWR from 'swr';
-import Link from 'next/link';
 import { useMemo, useState, type CSSProperties } from 'react';
-import {
-  listApplications,
-  type ApplicationDto,
-} from '@/lib/api';
-import { applicationRoute } from '@/lib/routes';
+import { listApplications, SWR_KEYS, type ApplicationDto } from '@/lib/api';
+import { useAppNavigation } from '@/lib/useAppNavigation';
 import {
   startOfMonth,
   endOfMonth,
@@ -39,8 +35,9 @@ interface CalendarEvent {
 }
 
 export function CalendarView() {
-  const { data, error, isLoading } = useSWR('calendar-apps', fetchApplications);
+  const { data, error, isLoading } = useSWR(SWR_KEYS.calendarApplications(), fetchApplications);
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const { goToApplication } = useAppNavigation();
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -93,7 +90,7 @@ export function CalendarView() {
             {weeks.map((week, index) => (
               <div key={index} style={weekRow}>
                 {week.map((day) => (
-                  <DayCell key={day.iso} day={day} currentMonth={currentMonth} />
+                  <DayCell key={day.iso} day={day} currentMonth={currentMonth} onNavigate={goToApplication} />
                 ))}
               </div>
             ))}
@@ -107,9 +104,11 @@ export function CalendarView() {
 function DayCell({
   day,
   currentMonth,
+  onNavigate,
 }: {
   day: MonthDay;
   currentMonth: Date;
+  onNavigate: (applicationId: string, view?: 'edit' | 'issues' | 'timeline') => void;
 }) {
   const { date, iso, events } = day;
   const isCurrentMonth = isSameMonth(date, currentMonth);
@@ -126,19 +125,22 @@ function DayCell({
       <div style={dayNumber}>{format(date, 'd')}</div>
       <div style={dayEvents}>
         {events.map((event) => (
-          <Link
+          <button
             key={event.id}
-            href={applicationRoute(event.application.applicationId)}
+            type="button"
+            onClick={() => onNavigate(event.application.applicationId)}
             style={{
               ...eventPill,
               background: event.type === 'Determination' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(250, 204, 21, 0.25)',
               borderColor: event.type === 'Determination' ? '#1d4ed8' : '#b45309',
               color: event.type === 'Determination' ? '#1d4ed8' : '#b45309',
+              textAlign: 'left',
+              cursor: 'pointer',
             }}
           >
             <span>{event.application.prjCodeName}</span>
             <span style={{ fontSize: 11, opacity: 0.85 }}>{event.type}</span>
-          </Link>
+          </button>
         ))}
       </div>
     </div>

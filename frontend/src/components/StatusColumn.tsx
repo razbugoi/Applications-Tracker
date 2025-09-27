@@ -2,8 +2,9 @@
 
 import useSWR from 'swr';
 import type { CSSProperties } from 'react';
-import { listApplications } from '@/lib/api';
+import { listApplications, SWR_KEYS } from '@/lib/api';
 import { ApplicationCard } from './ApplicationCard';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface Props {
   status: 'Submitted' | 'Invalidated' | 'Live' | 'Determined';
@@ -13,11 +14,11 @@ interface Props {
 }
 
 export function StatusColumn({ status, title, subtitle, onSelect }: Props) {
-  const { data, error, isLoading } = useSWR(['applications', status], () => listApplications(status));
+  const { data, error, isLoading } = useSWR(SWR_KEYS.applicationsByStatus(status), () => listApplications(status));
   const items = data?.items ?? [];
 
   return (
-    <section style={columnStyle}>
+    <section data-testid={`status-column-${status.toLowerCase()}`} style={columnStyle}>
       <header style={headerStyle}>
         <div>
           <div style={{ fontWeight: 600 }}>{title}</div>
@@ -26,7 +27,11 @@ export function StatusColumn({ status, title, subtitle, onSelect }: Props) {
         <span style={badgeStyle}>{items.length}</span>
       </header>
       <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
-        {isLoading && <p style={infoText}>Loading…</p>}
+        {isLoading && (
+          <div style={spinnerWrapper}>
+            <LoadingSpinner size="sm" />
+          </div>
+        )}
         {error && <p style={{ ...infoText, color: 'var(--danger)' }}>Failed to load</p>}
         {!isLoading && !error && items.length === 0 && <p style={infoText}>No records</p>}
         {items.map((application, index) => (
@@ -71,4 +76,10 @@ const badgeStyle: CSSProperties = {
 const infoText: CSSProperties = {
   fontSize: 12,
   color: 'var(--text-muted)',
+};
+
+const spinnerWrapper: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'center',
+  padding: '12px 0',
 };

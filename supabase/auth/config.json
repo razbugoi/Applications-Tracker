@@ -1,0 +1,22 @@
+{
+  "site_url": "http://localhost:3000",
+  "additional_redirect_urls": [
+    "https://planning-tracker.vercel.app",
+    "https://staging-planning-tracker.vercel.app"
+  ],
+  "jwt_expiry": 3600,
+  "refresh_token_rotation_enabled": true,
+  "mailer": {
+    "autoconfirm": false,
+    "secure_email_change": true,
+    "template_paths": {
+      "magic_link": "supabase/auth/email-templates/magic-link.html",
+      "reset_password": "supabase/auth/email-templates/password-reset.html"
+    }
+  },
+  "external": {
+    "email": {
+      "enabled": true
+    }
+  }
+}

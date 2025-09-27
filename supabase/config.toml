@@ -1,0 +1,12 @@
+# Supabase CLI project configuration.
+# Update `project_id` after running `supabase link`.
+
+project_id = "kswjftmtiuwplqtdwqpn"
+
+# API configuration is optional; defaults from the Supabase CLI will be used.
+
+
+[db]
+# Connection string used by CLI commands; defaults to Supabase local stack when running `supabase start`.
+port = 54322
+major_version = 17

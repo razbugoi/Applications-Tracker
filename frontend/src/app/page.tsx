@@ -2,12 +2,12 @@
 
 import useSWR from 'swr';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Route } from 'next';
-import { listApplications, listIssues, type IssueDto, type ApplicationDto } from '@/lib/api';
+import { listApplications, listIssues, SWR_KEYS, type IssueDto } from '@/lib/api';
+import type { ApplicationDto } from '@/types/application';
 import { NewApplicationForm } from '@/components/NewApplicationForm';
-import { ApplicationDetailPanel } from '@/components/ApplicationDetailPanel';
-import { Modal } from '@/components/Modal';
+import { useAppNavigation } from '@/lib/useAppNavigation';
 
 const STATUS_META = [
   {
@@ -42,8 +42,8 @@ const STATUS_META = [
 }>;
 
 export default function DashboardPage() {
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const { data, isLoading, error, mutate } = useSWR('dashboard-overview', async () => {
+  const { goToApplication } = useAppNavigation();
+  const { data, isLoading, error } = useSWR(SWR_KEYS.dashboardOverview, async () => {
     const [submitted, invalidated, live, determined, issues] = await Promise.all([
       listApplications('Submitted'),
       listApplications('Invalidated'),
@@ -83,11 +83,7 @@ export default function DashboardPage() {
             Keep track of workload, key statuses, and recent issues at a glance.
           </p>
         </div>
-        <NewApplicationForm
-          onCreated={async (_application: ApplicationDto) => {
-            await mutate();
-          }}
-        />
+        <NewApplicationForm />
       </section>
 
       <section style={statsSection} aria-label="Status summary">
@@ -162,7 +158,8 @@ export default function DashboardPage() {
             {data.upcomingDeterminations.slice(0, 5).map((item) => (
               <li key={item.applicationId} style={upcomingRow}>
                 <button
-                  onClick={() => setSelectedApplicationId(item.applicationId)}
+                  type="button"
+                  onClick={() => goToApplication(item.applicationId)}
                   style={eventLink}
                 >
                   {item.prjCodeName}
@@ -197,14 +194,6 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {selectedApplicationId && (
-        <Modal onClose={() => setSelectedApplicationId(null)}>
-          <ApplicationDetailPanel
-            applicationId={selectedApplicationId}
-            onClose={() => setSelectedApplicationId(null)}
-          />
-        </Modal>
-      )}
     </div>
   );
 }
@@ -241,7 +230,7 @@ function summarizeOutcomes(applications: ApplicationDto[]) {
 
   applications.forEach((application) => {
     const outcome = application.outcome ?? 'Pending';
-    if (outcome === 'Approved' || outcome === 'Permitted') {
+    if (outcome === 'Approved') {
       summary.approved += 1;
     } else if (outcome === 'Refused') {
       summary.refused += 1;
@@ -291,7 +280,7 @@ function OutcomeChip({
   );
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) {
     return '—';
   }

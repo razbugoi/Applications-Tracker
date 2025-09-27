@@ -1,13 +1,11 @@
 'use client';
 
-import { type CSSProperties, type KeyboardEvent, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent } from 'react';
 import useSWR from 'swr';
-import { useSWRConfig } from 'swr';
-import { listApplications, type ApplicationDto } from '@/lib/api';
+import { listApplications, SWR_KEYS, type ApplicationDto } from '@/lib/api';
 import councilPortals from '../../../config/council-portals.json';
 import { NewApplicationForm } from './NewApplicationForm';
-import { ApplicationDetailPanel } from './ApplicationDetailPanel';
-import { Modal } from './Modal';
+import { useAppNavigation } from '@/lib/useAppNavigation';
 
 const PORTAL_DEFAULTS = councilPortals as Record<string, string>;
 
@@ -51,9 +49,8 @@ interface StatusPageProps {
 }
 
 export function StatusPage({ status, title, subtitle }: StatusPageProps) {
-  const { data, error, isLoading } = useSWR(['applications', status], () => listApplications(status));
-  const { mutate } = useSWRConfig();
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const { data, error, isLoading } = useSWR(SWR_KEYS.applicationsByStatus(status), () => listApplications(status));
+  const { goToApplication } = useAppNavigation();
 
   const items = data?.items ?? [];
 
@@ -67,13 +64,8 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
     }
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      setSelectedApplicationId(id);
+      goToApplication(id);
     }
-  };
-
-  const handleApplicationCreated = async (application: ApplicationDto) => {
-    await mutate(['applications', status]);
-    setSelectedApplicationId(application.applicationId);
   };
 
   return (
@@ -84,7 +76,7 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
             <h1 style={{ margin: 0 }}>{title}</h1>
             <p style={{ margin: 0, color: 'var(--text-muted)' }}>{subtitle}</p>
           </div>
-          <NewApplicationForm onCreated={handleApplicationCreated} />
+          <NewApplicationForm />
         </div>
       </header>
 
@@ -117,7 +109,7 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
                   return (
                     <tr
                       key={application.applicationId}
-                      onClick={() => setSelectedApplicationId(application.applicationId)}
+                      onClick={() => goToApplication(application.applicationId)}
                       onKeyDown={(event) => handleRowKeyDown(event, application.applicationId)}
                       tabIndex={0}
                     >
@@ -177,14 +169,6 @@ export function StatusPage({ status, title, subtitle }: StatusPageProps) {
         </div>
       </section>
 
-      {selectedApplicationId && (
-        <Modal onClose={() => setSelectedApplicationId(null)}>
-          <ApplicationDetailPanel
-            applicationId={selectedApplicationId}
-            onClose={() => setSelectedApplicationId(null)}
-          />
-        </Modal>
-      )}
     </main>
   );
 }

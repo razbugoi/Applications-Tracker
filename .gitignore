@@ -10,6 +10,15 @@ backend/dist/
 frontend/.next/
 frontend/out/
 frontend/.env.local
+frontend/.env.vercel
+frontend/.env.*
+!frontend/.env.local.example
+!frontend/.env.supabase.example
+frontend/next-dev.log
+frontend/test-results/
+.vercel
+supabase/exports/
+supabase/.temp/
 frontend/compute/
 frontend/deploy-manifest.json
 frontend/index.html

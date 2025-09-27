@@ -2,9 +2,9 @@
 
 import { useState, type CSSProperties } from 'react';
 import useSWR from 'swr';
-import { useRouter } from 'next/navigation';
-import { listIssues, type IssueDto } from '@/lib/api';
-import { applicationRoute } from '@/lib/routes';
+import { listIssues, SWR_KEYS, type IssueDto } from '@/lib/api';
+import { LoadingSpinner } from './LoadingSpinner';
+import { useAppNavigation } from '@/lib/useAppNavigation';
 
 const FILTERS: { label: string; value: IssueDto['status'] | 'All' }[] = [
   { label: 'All', value: 'All' },
@@ -16,10 +16,11 @@ const FILTERS: { label: string; value: IssueDto['status'] | 'All' }[] = [
 
 export function IssuesPage() {
   const [filter, setFilter] = useState<'All' | IssueDto['status']>('All');
-  const router = useRouter();
-  const { data, isLoading, error } = useSWR(['issues', filter], () =>
-    listIssues(filter === 'All' ? undefined : filter)
+  const { data, isLoading, error } = useSWR(
+    SWR_KEYS.issues(filter),
+    () => listIssues(filter === 'All' ? undefined : filter)
   );
+  const { goToApplication } = useAppNavigation();
 
   const items = data?.items ?? [];
 
@@ -51,7 +52,11 @@ export function IssuesPage() {
         </nav>
       </header>
 
-      {isLoading && <p style={messageStyle}>Loading issues…</p>}
+      {isLoading && (
+        <div style={spinnerWrapper}>
+          <LoadingSpinner size="sm" message="Loading issues…" />
+        </div>
+      )}
       {error && <p style={{ ...messageStyle, color: 'var(--danger)' }}>Failed to load issues.</p>}
       {!isLoading && !error && items.length === 0 && <p style={messageStyle}>No issues recorded.</p>}
 
@@ -75,14 +80,15 @@ export function IssuesPage() {
                 {items.map((issue, index) => (
                   <tr
                     key={issue.issueId}
-                    onClick={() => router.push(applicationRoute(issue.applicationId))}
+                    onClick={() => goToApplication(issue.applicationId)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        router.push(applicationRoute(issue.applicationId));
+                        goToApplication(issue.applicationId);
                       }
                     }}
                     tabIndex={0}
+                    role="button"
                   >
                     <td className="status-table__cell--index">{index + 1}</td>
                     <td title={issue.title}>
@@ -109,7 +115,7 @@ export function IssuesPage() {
   );
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) {
     return '—';
   }
@@ -154,4 +160,10 @@ const messageStyle: CSSProperties = {
   padding: 48,
   textAlign: 'center',
   color: 'var(--text-muted)',
+};
+
+const spinnerWrapper: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'center',
+  padding: 32,
 };

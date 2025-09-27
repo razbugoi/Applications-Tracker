@@ -1,0 +1,3 @@
+# Timestamp,LogicalResourceId,ResourceType,Status,StatusReason
+2025-10-02T08:17:03Z,PlanningTrackerStack,AWS::CloudFormation::Stack,DELETE_IN_PROGRESS,User Initiated
+2025-10-02T08:21:11Z,PlanningTrackerStack,AWS::CloudFormation::Stack,DELETE_COMPLETE,

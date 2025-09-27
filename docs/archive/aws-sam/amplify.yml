@@ -1,0 +1,20 @@
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+            - export NEXT_PUBLIC_STATIC_ONLY=${NEXT_PUBLIC_STATIC_ONLY:-true}
+            - ../scripts/generate-frontend-env.sh ./.env.production
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: out
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*

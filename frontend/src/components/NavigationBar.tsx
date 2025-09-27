@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Route } from 'next';
-import type { AuthUser } from 'aws-amplify/auth';
 import { useAuth } from '@/components/AuthProvider';
+import type { User } from '@supabase/supabase-js';
 
 const NAV_LINKS = [
   { href: '/', label: 'Dashboard' },
+  { href: '/applications', label: 'Applications' },
   { href: '/calendar', label: 'Calendar' },
   { href: '/outcomes', label: 'Outcome Summary' },
   { href: '/issues', label: 'Issues' },
@@ -28,7 +29,9 @@ export function NavigationBar() {
         <div className="app-shell__nav-wrapper">
           <nav aria-label="Primary" className="app-shell__nav">
             {NAV_LINKS.map((link) => {
-              const active = pathname === link.href;
+              const active =
+                pathname === link.href ||
+                (link.href !== '/' && pathname.startsWith(link.href));
               return (
                 <Link
                   key={link.href}
@@ -54,10 +57,9 @@ export function NavigationBar() {
   );
 }
 
-function getUserLabel(user: AuthUser | null): string | null {
+function getUserLabel(user: User | null): string | null {
   if (!user) {
     return null;
   }
-  const loginId = user.signInDetails?.loginId;
-  return loginId ?? user.username ?? null;
+  return user.email ?? user.user_metadata?.full_name ?? user.id ?? null;
 }

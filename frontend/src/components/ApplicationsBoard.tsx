@@ -1,13 +1,9 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { useState } from 'react';
-import { useSWRConfig } from 'swr';
 import { NewApplicationForm } from './NewApplicationForm';
 import { StatusColumn } from './StatusColumn';
-import { ApplicationDetailPanel } from './ApplicationDetailPanel';
-import { Modal } from './Modal';
-import type { ApplicationDto } from '@/lib/api';
+import { useAppNavigation } from '@/lib/useAppNavigation';
 
 const COLUMNS = [
   {
@@ -33,14 +29,7 @@ const COLUMNS = [
 ];
 
 export function ApplicationsBoard() {
-  const { mutate } = useSWRConfig();
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-
-  async function handleCreated(application: ApplicationDto) {
-    await mutate(['applications', application.status]);
-    setSelectedApplicationId(application.applicationId);
-  }
-
+  const { goToApplication } = useAppNavigation();
   return (
     <div style={boardWrapper}>
       <div style={boardHeader}>
@@ -50,7 +39,7 @@ export function ApplicationsBoard() {
             Track submissions through validation, live assessment, and determination.
           </p>
         </div>
-        <NewApplicationForm onCreated={handleCreated} />
+        <NewApplicationForm />
       </div>
       <div style={columnsGrid}>
         {COLUMNS.map((column) => (
@@ -59,19 +48,10 @@ export function ApplicationsBoard() {
             status={column.status}
             title={column.title}
             subtitle={column.subtitle}
-            onSelect={(id) => setSelectedApplicationId(id)}
+            onSelect={goToApplication}
           />
         ))}
       </div>
-
-      {selectedApplicationId && (
-        <Modal onClose={() => setSelectedApplicationId(null)}>
-          <ApplicationDetailPanel
-            applicationId={selectedApplicationId}
-            onClose={() => setSelectedApplicationId(null)}
-          />
-        </Modal>
-      )}
     </div>
   );
 }

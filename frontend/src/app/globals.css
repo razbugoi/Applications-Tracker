@@ -228,17 +228,17 @@ main {
 .app-shell__nav-wrapper {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 28px;
   margin-left: auto;
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .app-shell__nav {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
+  margin-right: auto;
 }
 
 .app-shell__nav-link {

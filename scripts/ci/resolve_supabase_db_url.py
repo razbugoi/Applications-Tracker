@@ -29,8 +29,13 @@ def build_url() -> str:
         )
 
     parts = urllib.parse.urlparse(url)
+    username = parts.username or ""
+    password = parts.password or ""
     host = parts.hostname or ""
     port = parts.port or 5432
+
+    if host.startswith("db.") and host.endswith(".supabase.net"):
+        host = host[: -len(".supabase.net")] + ".supabase.co"
 
     query_items = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
     has_hostaddr = any(key == "hostaddr" for key, _ in query_items)
@@ -41,7 +46,16 @@ def build_url() -> str:
             query_items.append(("hostaddr", ipv4))
 
     new_query = urllib.parse.urlencode(query_items, doseq=True)
-    return urllib.parse.urlunparse(parts._replace(query=new_query))
+    netloc = host
+    if port:
+        netloc = f"{host}:{port}"
+    if username:
+        userinfo = urllib.parse.quote(username)
+        if password:
+            userinfo += ":" + urllib.parse.quote(password)
+        netloc = f"{userinfo}@{netloc}"
+
+    return urllib.parse.urlunparse(parts._replace(netloc=netloc, query=new_query))
 
 
 def _resolve_ipv4(host: str, port: int) -> Optional[str]:

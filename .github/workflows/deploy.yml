@@ -35,13 +35,7 @@ jobs:
           if [ -n "${SUPABASE_DB_URL:-}" ]; then
             DB_URL="$SUPABASE_DB_URL"
           elif [ -n "${SUPABASE_DB_PASSWORD:-}" ]; then
-            DB_URL=$(python - <<'PY'
-import os, urllib.parse
-password = os.environ["SUPABASE_DB_PASSWORD"]
-project = os.environ["SUPABASE_PROJECT_REF"]
-print(f"postgresql://postgres:{urllib.parse.quote(password)}@db.{project}.supabase.co:5432/postgres")
-PY
-)
+            DB_URL=$(python -c "import os, urllib.parse; password=os.environ['SUPABASE_DB_PASSWORD']; project=os.environ['SUPABASE_PROJECT_REF']; print(f'postgresql://postgres:{urllib.parse.quote(password)}@db.{project}.supabase.co:5432/postgres')")
           else
             echo "::error file=supabase/migrations::Supabase connection secrets missing. Set SUPABASE_DB_URL or SUPABASE_DB_PASSWORD." >&2
             exit 1

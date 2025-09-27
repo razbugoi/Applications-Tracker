@@ -104,7 +104,7 @@ Runbook reference: see `docs/runbooks/supabase-validation.md` for reproducible v
   - README, architecture, and deployment guides refreshed to describe the Supabase + Vercel stack (see Section 5 updates and `docs/implementation-guide.md`).
 - [x] Close out migration tasks and retrospective notes.
   - Decommission decision logged in `docs/migration-decisions/2025-10-02-phase-7-decommission.md`; retrospective scheduled for 2025-10-04.
-  - Added GitHub Actions auto-deploy pipeline (`.github/workflows/deploy.yml`) to run Supabase migrations and Vercel production deploys on pushes to `main` (requires GitHub environment secrets stored in `Auto Deployment`; see `README.md`).
+  - Added GitHub Actions auto-deploy pipeline (`.github/workflows/deploy.yml`) to run Supabase migrations and Vercel production deploys on pushes to `main` (requires GitHub environment secrets stored in `Production`; see `README.md`).
 
 ## 5. Environment & Configuration Checklist
 
@@ -112,11 +112,11 @@ Runbook reference: see `docs/runbooks/supabase-validation.md` for reproducible v
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-side only)
-- Optional: `SUPABASE_DB_URL` (preferred) or `SUPABASE_DB_PASSWORD` if direct Postgres connections are needed (e.g., CI migrations); store them in the GitHub `Auto Deployment` environment.
+- Optional: `SUPABASE_DB_URL` (preferred) or `SUPABASE_DB_PASSWORD` if direct Postgres connections are needed (e.g., CI migrations); store them in the GitHub `Production` environment.
 - Run `vercel link` and `vercel env pull` to sync env vars locally.
 
 ### GitHub Actions
-- Environment `Auto Deployment` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL` (or `SUPABASE_DB_PASSWORD`), and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys.
+- Environment `Production` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL` (or `SUPABASE_DB_PASSWORD`), and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys.
 
 ### Supabase
 - Configure Auth settings: site URL (Vercel domain), redirect URLs for login/reset.

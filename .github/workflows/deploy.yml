@@ -10,6 +10,7 @@ jobs:
   supabase-migrations:
     name: Push Supabase Migrations
     runs-on: ubuntu-latest
+    environment: Auto Deployment
     env:
       SUPABASE_PROJECT_REF: kswjftmtiuwplqtdwqpn
     steps:
@@ -47,6 +48,7 @@ PY
     name: Deploy Vercel Production Build
     runs-on: ubuntu-latest
     needs: supabase-migrations
+    environment: Auto Deployment
     steps:
       - name: Checkout
         uses: actions/checkout@v4

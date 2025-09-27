@@ -32,6 +32,7 @@ Manage variables with `vercel env pull` (local) and the Vercel dashboard for pro
    - Update runbook archives with timestamps/results (automation does not cover manual smoke tests yet).
 
 ### GitHub Action Secrets
+- All deployment secrets live in the GitHub environment **Auto Deployment** so that the workflow jobs inherit them automatically.
 - `VERCEL_TOKEN`: personal access token with deploy privilege for the `applications-tracker` project (scope `team_08YYYF8jyDBDsJNqpZyv7ys0`).
 - `SUPABASE_DB_URL` **or** `SUPABASE_DB_PASSWORD`: provide the full Postgres connection string (preferred) or the raw password so the workflow can construct the string automatically.
 

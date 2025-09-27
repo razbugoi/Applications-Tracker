@@ -22,7 +22,7 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          supabase db push --db-url "$SUPABASE_DB_URL" --non-interactive
+          supabase db push --db-url "$SUPABASE_DB_URL"
 
   vercel-deploy:
     name: Deploy Vercel Production Build

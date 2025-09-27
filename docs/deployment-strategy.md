@@ -23,7 +23,7 @@ Manage variables with `vercel env pull` (local) and the Vercel dashboard for pro
 
 ## Deployment Workflow
 1. **CI checks** (GitHub Actions or local preflight): lint, type-check, Playwright smoke tests (can target hosted preview env).
-2. **Database migrations**: automatic `supabase db push` is executed from `.github/workflows/deploy.yml` on every push to `main`. When running locally, invoke the same command from the `supabase` directory after logging in.
+2. **Database migrations**: automatic `supabase db push` is executed from `.github/workflows/deploy.yml` on every push to `main`. When running locally, invoke the same command from the `supabase` directory with `SUPABASE_DB_URL` set (no CLI login required).
 3. **Build**: `npm run build` generates production output; ensure no ESLint or type errors remain. The workflow performs `vercel build --prod` before deployment.
 4. **Promotion**: `npm run deploy:prod` publishes the prebuilt artifacts to production. The workflow mirrors this step using `vercel deploy --prebuilt --prod` once the build succeeds.
 5. **Post-deploy validation**:
@@ -33,8 +33,7 @@ Manage variables with `vercel env pull` (local) and the Vercel dashboard for pro
 
 ### GitHub Action Secrets
 - `VERCEL_TOKEN`: personal access token with deploy privilege for the `applications-tracker` project (scope `team_08YYYF8jyDBDsJNqpZyv7ys0`).
-- `SUPABASE_ACCESS_TOKEN`: Supabase PAT authorised for project `kswjftmtiuwplqtdwqpn`.
-- `SUPABASE_DB_PASSWORD`: Database password from Supabase project settings.
+- `SUPABASE_DB_URL`: production Postgres connection string from the Supabase dashboard (`postgresql://postgres:<password>@db.supabase.co:5432/postgres`).
 
 > The workflow assumes the GitHub repository retains permissions to pull from the existing Vercel and Supabase projects. Rotate tokens periodically and update the secrets accordingly.
 

@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 import sys
+import urllib.error
 import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -37,6 +40,8 @@ def build_url() -> str:
         params = _direct_params(project_env, password_env)
 
     template = _read_pooler_template()
+    if not template:
+        template = _fetch_pooler_connection(project_env or _project_from_params(params))
     params = _maybe_switch_to_pooler(params, template, password_env, project_env)
 
     params = _ensure_username(params, project_env)
@@ -95,6 +100,46 @@ def _read_pooler_template() -> Optional[str]:
         return POOLER_TEMPLATE_PATH.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
         return None
+
+
+def _fetch_pooler_connection(project: Optional[str]) -> Optional[str]:
+    token = os.environ.get("SUPABASE_ACCESS_TOKEN")
+    if not token or not project:
+        return None
+
+    api_url = os.environ.get("SUPABASE_API_URL", "https://api.supabase.com")
+    api_url = api_url.rstrip("/")
+    request_url = f"{api_url}/v1/projects/{project}/config/database/pooler"
+
+    req = urllib.request.Request(
+        request_url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "User-Agent": "Applications-Tracker-CI/1.0",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status != 200:
+                return None
+            try:
+                payload = json.loads(resp.read().decode("utf-8"))
+            except json.JSONDecodeError:
+                return None
+    except (urllib.error.URLError, TimeoutError):
+        return None
+
+    if not isinstance(payload, list):
+        return None
+
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("database_type") == "PRIMARY" and entry.get("connection_string"):
+            return str(entry["connection_string"])
+    return None
 
 
 def _maybe_switch_to_pooler(

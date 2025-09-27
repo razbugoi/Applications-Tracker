@@ -73,8 +73,8 @@ npm run test:security # RLS regression check (requires supabase env vars)
 - GitHub Actions workflow `.github/workflows/deploy.yml` runs on every push to `main` (or manually via **Run workflow**). It first applies pending Supabase migrations and then deploys the prebuilt frontend to Vercel.
 - Required GitHub environment secrets (`Production`):
   - `SUPABASE_ACCESS_TOKEN` – Supabase personal access token so the CLI can authenticate before pushing migrations.
-  - `SUPABASE_DB_URL` – full Postgres connection string for the production database (preferred). Alternatively provide `SUPABASE_DB_PASSWORD` and the workflow will derive the connection string automatically.
-  - `SUPABASE_DB_PASSWORD` – fallback secret if `SUPABASE_DB_URL` is not supplied (Supabase project password).
+  - `SUPABASE_DB_URL` – full Postgres connection string for the production database (copy it from Supabase → Settings → Database → Connection string).
+  - `SUPABASE_DB_PASSWORD` – optional, kept for ad-hoc scripts that still expect the raw password.
   - `VERCEL_TOKEN` – Vercel personal access token with access to the `applications-tracker` project.
 - The workflow uses the existing project scope (`team_08YYYF8jyDBDsJNqpZyv7ys0`). Manage the secrets under **GitHub → Settings → Environments → Production** before enabling auto-deploys.
 - If you prefer branch-based previews, duplicate the job with a `preview` environment and use `vercel deploy` without the `--prod` flag.

@@ -112,11 +112,11 @@ Runbook reference: see `docs/runbooks/supabase-validation.md` for reproducible v
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-side only)
-- Optional: `SUPABASE_DB_URL` (preferred) or `SUPABASE_DB_PASSWORD` if direct Postgres connections are needed (e.g., CI migrations); store them in the GitHub `Production` environment.
+- Optional: `SUPABASE_DB_PASSWORD` if any scripts still rely on the raw password; otherwise use `SUPABASE_DB_URL` for CI and tooling.
 - Run `vercel link` and `vercel env pull` to sync env vars locally.
 
 ### GitHub Actions
-- Environment `Production` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL` (or `SUPABASE_DB_PASSWORD`), and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys.
+- Environment `Production` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL`, and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys. Keep `SUPABASE_DB_PASSWORD` only if other automation needs it.
 
 ### Supabase
 - Configure Auth settings: site URL (Vercel domain), redirect URLs for login/reset.

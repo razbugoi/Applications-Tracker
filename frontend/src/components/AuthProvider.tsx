@@ -8,7 +8,9 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   user: User | null;
   session: Session | null;
-  signInWithEmail: (email: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (options: { email: string; password: string; fullName?: string }) => Promise<{ needsConfirmation: boolean }>;
+  sendMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -57,7 +59,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: Boolean(user),
     user,
     session,
-    async signInWithEmail(email: string) {
+    async signInWithPassword(email: string, password: string) {
+      if (!supabase) {
+        throw new Error('Supabase client unavailable');
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        throw error;
+      }
+    },
+    async signUpWithPassword({ email, password, fullName }) {
+      if (!supabase) {
+        throw new Error('Supabase client unavailable');
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: fullName ? { full_name: fullName } : undefined,
+        },
+      });
+      if (error) {
+        throw error;
+      }
+      const needsConfirmation = !data?.user?.email_confirmed_at;
+      return { needsConfirmation };
+    },
+    async sendMagicLink(email: string) {
       if (!supabase) {
         throw new Error('Supabase client unavailable');
       }

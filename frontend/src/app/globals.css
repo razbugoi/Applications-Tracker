@@ -203,8 +203,7 @@ main {
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -228,9 +227,12 @@ main {
 .app-shell__nav-wrapper {
   display: flex;
   align-items: center;
-  gap: 28px;
-  margin-left: auto;
+  gap: 24px;
+  flex: 1 1 100%;
+  width: 100%;
+  justify-content: space-between;
   flex-wrap: wrap;
+  margin-left: 0;
 }
 
 .app-shell__nav {
@@ -238,7 +240,6 @@ main {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-start;
-  margin-right: auto;
 }
 
 .app-shell__nav-link {
@@ -271,6 +272,7 @@ main {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .app-shell__user {

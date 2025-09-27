@@ -112,11 +112,11 @@ Runbook reference: see `docs/runbooks/supabase-validation.md` for reproducible v
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-side only)
-- Optional: `SUPABASE_DB_PASSWORD` if any scripts still rely on the raw password; otherwise use the pooled `SUPABASE_DB_URL` (`.supabase.net` host). The workflow rewrites `.supabase.co` URLs and can fall back to the password when necessary.
+- Optional: `SUPABASE_DB_PASSWORD` if any scripts still rely on the raw password; otherwise use the pooled `SUPABASE_DB_URL`. The workflow augments the URL with an IPv4 `hostaddr` and can fall back to the password when necessary.
 - Run `vercel link` and `vercel env pull` to sync env vars locally.
 
 ### GitHub Actions
-- Environment `Production` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL`, and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys. Keep `SUPABASE_DB_PASSWORD` only if other automation needs it; CI can fall back to it when the URL is missing.
+- Environment `Production` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL`, and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys. Keep `SUPABASE_DB_PASSWORD` only if other automation needs it; CI adds IPv4 `hostaddr` automatically and can fall back to the password when the URL is missing.
 
 ### Supabase
 - Configure Auth settings: site URL (Vercel domain), redirect URLs for login/reset.

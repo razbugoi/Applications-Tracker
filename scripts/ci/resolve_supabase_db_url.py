@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
 import urllib.parse
+from typing import Optional
 
 PROJECT_ENV = "SUPABASE_PROJECT_REF"
 URL_ENV = "SUPABASE_DB_URL"
@@ -21,36 +23,35 @@ def build_url() -> str:
             raise RuntimeError(
                 "Supabase connection string missing. Provide SUPABASE_DB_URL or SUPABASE_DB_PASSWORD."
             )
-        url = "postgresql://postgres:{password}@db.{project}.supabase.net:5432/postgres".format(
+        url = "postgresql://postgres:{password}@db.{project}.supabase.co:5432/postgres?sslmode=require".format(
             password=urllib.parse.quote(password),
             project=project,
         )
 
     parts = urllib.parse.urlparse(url)
     host = parts.hostname or ""
-    if host.endswith(".supabase.co"):
-        host = host[: -len(".supabase.co")] + ".supabase.net"
+    port = parts.port or 5432
 
-    netloc = host
-    if parts.port:
-        netloc = f"{host}:{parts.port}"
+    query_items = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+    has_hostaddr = any(key == "hostaddr" for key, _ in query_items)
 
-    if parts.username:
-        userinfo = urllib.parse.quote(parts.username)
-        if parts.password:
-            userinfo += ":" + urllib.parse.quote(parts.password)
-        netloc = f"{userinfo}@{netloc}"
+    if host and not has_hostaddr:
+        ipv4 = _resolve_ipv4(host, port)
+        if ipv4:
+            query_items.append(("hostaddr", ipv4))
 
-    return urllib.parse.urlunparse(
-        (
-            parts.scheme,
-            netloc,
-            parts.path,
-            parts.params,
-            parts.query,
-            parts.fragment,
-        )
-    )
+    new_query = urllib.parse.urlencode(query_items, doseq=True)
+    return urllib.parse.urlunparse(parts._replace(query=new_query))
+
+
+def _resolve_ipv4(host: str, port: int) -> Optional[str]:
+    try:
+        infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return None
+    if not infos:
+        return None
+    return infos[0][4][0]
 
 
 def main() -> int:

@@ -25,6 +25,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          set -euo pipefail
           if [ -n "$SUPABASE_DB_URL" ]; then
             DB_URL="$SUPABASE_DB_URL"
           elif [ -n "$SUPABASE_DB_PASSWORD" ]; then
@@ -36,7 +37,7 @@ print(f"postgresql://postgres:{urllib.parse.quote(password)}@db.{project}.supaba
 PY
 )
           else
-            echo "Supabase connection secrets missing. Set SUPABASE_DB_URL or SUPABASE_DB_PASSWORD." >&2
+            echo "::error file=supabase/migrations::Supabase connection secrets missing. Set SUPABASE_DB_URL or SUPABASE_DB_PASSWORD." >&2
             exit 1
           fi
 

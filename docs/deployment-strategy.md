@@ -35,7 +35,7 @@ Manage variables with `vercel env pull` (local) and the Vercel dashboard for pro
 - All deployment secrets live in the GitHub environment **Production** so the workflow jobs inherit them automatically.
 - `SUPABASE_ACCESS_TOKEN`: personal access token used by the Supabase CLI to authenticate in CI before running migrations.
 - `VERCEL_TOKEN`: personal access token with deploy privilege for the `applications-tracker` project (scope `team_08YYYF8jyDBDsJNqpZyv7ys0`).
-- `SUPABASE_DB_URL`: full production Postgres connection string (from Supabase dashboard). Keep `SUPABASE_DB_PASSWORD` around only if ad-hoc tooling still needs the raw password.
+- `SUPABASE_DB_URL`: full production Postgres connection string (use the pooled `.supabase.net` host from Supabase → Settings → Database; the workflow rewrites `.supabase.co` hosts automatically). Keep `SUPABASE_DB_PASSWORD` around only if ad-hoc tooling still needs the raw password—CI can fall back to it when the URL is missing.
 
 > The workflow assumes the GitHub repository retains permissions to pull from the existing Vercel and Supabase projects. Rotate tokens periodically and update the secrets accordingly.
 

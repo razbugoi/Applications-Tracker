@@ -36,10 +36,40 @@ jobs:
           fi
           if [ -n "${SUPABASE_DB_URL:-}" ]; then
             DB_URL="$SUPABASE_DB_URL"
+          elif [ -n "${SUPABASE_DB_PASSWORD:-}" ]; then
+            DB_URL=$(python - <<'PY'
+import os, urllib.parse
+password = urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"])
+project = os.environ["SUPABASE_PROJECT_REF"]
+print(f"postgresql://postgres:{password}@db.{project}.supabase.net:5432/postgres")
+PY
+)
           else
             echo "::error file=supabase/migrations::Supabase connection string missing. Set SUPABASE_DB_URL in the Production environment." >&2
             exit 1
           fi
+
+          DB_URL=$(DB_URL="$DB_URL" python - <<'PY'
+import os, urllib.parse
+url = os.environ["DB_URL"]
+parts = urllib.parse.urlparse(url)
+host = parts.hostname or ""
+if host.endswith(".supabase.co"):
+    host = host[:-12] + ".supabase.net"
+    netloc = host
+    if parts.port:
+        netloc = f"{host}:{parts.port}"
+    userinfo = parts.username or ""
+    password = parts.password or ""
+    if userinfo:
+        userinfo = urllib.parse.quote(userinfo)
+        if password:
+            userinfo += ":" + urllib.parse.quote(password)
+        netloc = f"{userinfo}@{netloc}"
+    url = urllib.parse.urlunparse((parts.scheme, netloc, parts.path, parts.params, parts.query, parts.fragment))
+print(url)
+PY
+)
 
           supabase db push --db-url "$DB_URL"
 

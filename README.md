@@ -79,6 +79,7 @@ npm run test:security # RLS regression check (requires supabase env vars)
   - `VERCEL_TOKEN` – Vercel personal access token with access to the `applications-tracker` project.
 - The workflow uses the existing project scope (`team_08YYYF8jyDBDsJNqpZyv7ys0`). Manage the secrets under **GitHub → Settings → Environments → Production** before enabling auto-deploys.
 - If you prefer branch-based previews, duplicate the job with a `preview` environment and use `vercel deploy` without the `--prod` flag.
+- **Important:** Vercel rejects deployments authored by accounts outside the team. Before pushing, ensure your local git config matches your GitHub identity (e.g. `git config user.name "Razvan Bugoi"` / `git config user.email "razbugoi@users.noreply.github.com"`). Commits made with `bot@example.com` (or any unrecognised email) will cause the `vercel deploy` step to fail.
 
 ## Documentation & Runbooks
 - `docs/architecture.md` – Supabase + Vercel architecture overview.

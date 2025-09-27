@@ -27,9 +27,9 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          if [ -n "$SUPABASE_DB_URL" ]; then
+          if [ -n "${SUPABASE_DB_URL:-}" ]; then
             DB_URL="$SUPABASE_DB_URL"
-          elif [ -n "$SUPABASE_DB_PASSWORD" ]; then
+          elif [ -n "${SUPABASE_DB_PASSWORD:-}" ]; then
             DB_URL=$(python - <<'PY'
 import os, urllib.parse
 password = os.environ["SUPABASE_DB_PASSWORD"]

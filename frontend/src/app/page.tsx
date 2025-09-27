@@ -201,16 +201,14 @@ export default function DashboardPage() {
 function IssueRow({ issue }: { issue: IssueDto }) {
   return (
     <li style={issueItem}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={issueTitleCell}>
         <span style={{ fontWeight: 600 }}>{issue.title}</span>
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           {issue.prjCodeName ?? 'Unknown project'} • {issue.status}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-        <span>Raised {formatDate(issue.dateRaised)}</span>
-        <span>Due {formatDate(issue.dueDate)}</span>
-      </div>
+      <span style={issueMeta}>Raised {formatDate(issue.dateRaised)}</span>
+      <span style={issueMeta}>Due {formatDate(issue.dueDate)}</span>
     </li>
   );
 }
@@ -382,14 +380,27 @@ const issuesList: React.CSSProperties = {
 };
 
 const issueItem: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) max-content max-content',
   alignItems: 'center',
   gap: 16,
   padding: '16px 18px',
   borderRadius: 16,
   border: '1px solid var(--border)',
   background: 'rgba(248, 250, 252, 0.9)',
+};
+
+const issueTitleCell: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  minWidth: 0,
+};
+
+const issueMeta: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--text-muted)',
+  textAlign: 'right',
 };
 
 const insightSection: React.CSSProperties = {

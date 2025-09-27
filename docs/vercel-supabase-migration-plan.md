@@ -117,6 +117,7 @@ Runbook reference: see `docs/runbooks/supabase-validation.md` for reproducible v
 
 ### GitHub Actions
 - Environment `Production` must expose `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL`, and `VERCEL_TOKEN` so CI can run Supabase migrations and Vercel deploys. Keep `SUPABASE_DB_PASSWORD` only if other automation needs it; CI adds IPv4 `hostaddr` automatically and can fall back to the password when the URL is missing.
+- GitHub Actions forces Supabase DNS resolution through DoH (`SUPABASE_DNS_RESOLVER=https`) to avoid IPv6-only lookups on hosted runners.
 
 ### Supabase
 - Configure Auth settings: site URL (Vercel domain), redirect URLs for login/reset.

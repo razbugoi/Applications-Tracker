@@ -71,6 +71,7 @@ npm run test:security # RLS regression check (requires supabase env vars)
 
 ### Automated Deployments
 - GitHub Actions workflow `.github/workflows/deploy.yml` runs on every push to `main` (or manually via **Run workflow**). It first applies pending Supabase migrations and then deploys the prebuilt frontend to Vercel.
+- The Supabase migration step forces DNS-over-HTTPS (`SUPABASE_DNS_RESOLVER=https`) so GitHub-hosted runners can reach the managed database over IPv4.
 - Required GitHub environment secrets (`Production`):
   - `SUPABASE_ACCESS_TOKEN` – Supabase personal access token so the CLI can authenticate before pushing migrations.
   - `SUPABASE_DB_URL` – full Postgres connection string for the production database (copy the pooled connection string from Supabase → Settings → Database; the workflow augments it with an IPv4 `hostaddr` automatically when required).

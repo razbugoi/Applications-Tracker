@@ -52,9 +52,9 @@ jobs:
     env:
       VERCEL_ORG_ID: team_08YYYF8jyDBDsJNqpZyv7ys0
       VERCEL_PROJECT_ID: prj_CMI3W6Wea6kXs2nQtBA6qWEU9uj6
-      VERCEL_GIT_COMMIT_AUTHOR_NAME: ${{ github.actor }}
-      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
-      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
+      VERCEL_GIT_COMMIT_AUTHOR_NAME: ${{ github.triggering_actor || github.actor }}
+      VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.triggering_actor || github.actor }}
+      VERCEL_GIT_COMMIT_AUTHOR_EMAIL: ${{ (github.triggering_actor || github.actor) }}@users.noreply.github.com
       VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
       VERCEL_GIT_COMMIT_REF: ${{ github.ref_name }}
       VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message || format('CI deploy {0}', github.sha) }}

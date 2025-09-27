@@ -10,6 +10,8 @@ jobs:
   supabase-migrations:
     name: Push Supabase Migrations
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: kswjftmtiuwplqtdwqpn
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,9 +22,25 @@ jobs:
       - name: Push Database Migrations
         working-directory: supabase
         env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          supabase db push --db-url "$SUPABASE_DB_URL"
+          if [ -n "$SUPABASE_DB_URL" ]; then
+            DB_URL="$SUPABASE_DB_URL"
+          elif [ -n "$SUPABASE_DB_PASSWORD" ]; then
+            DB_URL=$(python - <<'PY'
+import os, urllib.parse
+password = os.environ["SUPABASE_DB_PASSWORD"]
+project = os.environ["SUPABASE_PROJECT_REF"]
+print(f"postgresql://postgres:{urllib.parse.quote(password)}@db.{project}.supabase.co:5432/postgres")
+PY
+)
+          else
+            echo "Supabase connection secrets missing. Set SUPABASE_DB_URL or SUPABASE_DB_PASSWORD." >&2
+            exit 1
+          fi
+
+          supabase db push --db-url "$DB_URL"
 
   vercel-deploy:
     name: Deploy Vercel Production Build

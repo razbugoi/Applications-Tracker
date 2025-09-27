@@ -33,7 +33,7 @@ Manage variables with `vercel env pull` (local) and the Vercel dashboard for pro
 
 ### GitHub Action Secrets
 - `VERCEL_TOKEN`: personal access token with deploy privilege for the `applications-tracker` project (scope `team_08YYYF8jyDBDsJNqpZyv7ys0`).
-- `SUPABASE_DB_URL`: production Postgres connection string from the Supabase dashboard (`postgresql://postgres:<password>@db.supabase.co:5432/postgres`).
+- `SUPABASE_DB_URL` **or** `SUPABASE_DB_PASSWORD`: provide the full Postgres connection string (preferred) or the raw password so the workflow can construct the string automatically.
 
 > The workflow assumes the GitHub repository retains permissions to pull from the existing Vercel and Supabase projects. Rotate tokens periodically and update the secrets accordingly.
 

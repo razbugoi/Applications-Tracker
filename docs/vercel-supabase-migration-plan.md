@@ -112,7 +112,7 @@ Runbook reference: see `docs/runbooks/supabase-validation.md` for reproducible v
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-side only)
-- Optional: `SUPABASE_DB_URL` if direct Postgres connections are needed (e.g., CI migrations)
+- Optional: `SUPABASE_DB_URL` (preferred) or `SUPABASE_DB_PASSWORD` if direct Postgres connections are needed (e.g., CI migrations)
 - Run `vercel link` and `vercel env pull` to sync env vars locally.
 
 ### Supabase

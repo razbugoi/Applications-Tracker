@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { updateIssue } from '@/server/services/applicationService';
+import { deleteIssue, updateIssue } from '@/server/services/applicationService';
 
 const updateIssueSchema = z
   .object({
@@ -52,6 +52,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { applic
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Failed to update issue', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+}
+
+export async function DELETE(_request: NextRequest, { params }: { params: { applicationId: string; issueId: string } }) {
+  try {
+    await deleteIssue({ applicationId: params.applicationId, issueId: params.issueId });
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error('Failed to delete issue', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });
   }
 }

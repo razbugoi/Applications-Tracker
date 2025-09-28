@@ -50,3 +50,21 @@ export async function mergeIssueIntoCaches(globalMutate: ScopedMutator, issue: I
     )
   );
 }
+
+export async function removeIssueFromCaches(globalMutate: ScopedMutator, issue: IssueDto) {
+  const filters = ISSUE_FILTERS.filter((filter) => filter === 'All' || issue.status === filter);
+  await Promise.all(
+    filters.map((filter) =>
+      globalMutate(
+        SWR_KEYS.issues(filter),
+        (current?: { items: IssueDto[] }) => {
+          if (!current) {
+            return current;
+          }
+          return { items: current.items.filter((item) => item.issueId !== issue.issueId) };
+        },
+        { revalidate: true }
+      )
+    )
+  );
+}

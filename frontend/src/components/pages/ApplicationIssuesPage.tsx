@@ -1,23 +1,26 @@
 'use client';
 
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type ChangeEvent,
   type FormEvent,
 } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { useSWRConfig } from 'swr';
 import { BreadcrumbNav } from '@/components/BreadcrumbNav';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useNavigation, buildBreadcrumbs } from '@/contexts/NavigationContext';
-import { createIssue, fetchApplication, SWR_KEYS, updateIssue, type ApplicationAggregateDto } from '@/lib/api';
-import { ISSUE_CATEGORIES } from '@/lib/applicationConstants';
-import { mergeIssueIntoCaches, refreshApplicationCaches } from '@/lib/applicationCache';
+import { createIssue, deleteIssue, fetchApplication, SWR_KEYS, updateIssue, type ApplicationAggregateDto } from '@/lib/api';
+import { ISSUE_CATEGORIES, ISSUE_STATUSES } from '@/lib/applicationConstants';
+import { mergeIssueIntoCaches, refreshApplicationCaches, removeIssueFromCaches } from '@/lib/applicationCache';
 import { useAppNavigation } from '@/lib/useAppNavigation';
+import type { IssueDto, IssueStatus } from '@/types/application';
 
 interface Props {
   applicationId: string;
@@ -45,14 +48,47 @@ function emptyIssueDraft(): IssueDraft {
   };
 }
 
+interface IssueEditDraft {
+  issueId: string;
+  title: string;
+  category: string;
+  description: string;
+  dueDate: string;
+  assignedTo: string;
+  raisedBy: string;
+  dateRaised: string;
+  status: IssueStatus;
+  resolutionNotes: string;
+  dateResolved: string;
+}
+
+function issueToEditDraft(issue: IssueDto): IssueEditDraft {
+  const normaliseDate = (value?: string | null) => (value ? value.slice(0, 10) : '');
+  return {
+    issueId: issue.issueId,
+    title: issue.title,
+    category: issue.category,
+    description: issue.description,
+    dueDate: normaliseDate(issue.dueDate),
+    assignedTo: issue.assignedTo ?? '',
+    raisedBy: issue.raisedBy ?? '',
+    dateRaised: normaliseDate(issue.dateRaised) || new Date().toISOString().slice(0, 10),
+    status: issue.status,
+    resolutionNotes: issue.resolutionNotes ?? '',
+    dateResolved: normaliseDate(issue.dateResolved),
+  };
+}
+
 export function ApplicationIssuesPage({ applicationId }: Props) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { dispatch } = useNavigation();
   const { goBack } = useAppNavigation();
   const { data, error, isLoading, mutate } = useSWR<ApplicationAggregateDto>(
     SWR_KEYS.applicationAggregate(applicationId),
     () => fetchApplication(applicationId)
   );
+  const initialIssueId = searchParams.get('issueId') ?? undefined;
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: isLoading });
@@ -101,7 +137,12 @@ export function ApplicationIssuesPage({ applicationId }: Props) {
   return (
     <div style={pageShell}>
       <BreadcrumbNav />
-      <IssuesLayout applicationId={applicationId} aggregate={data} onUpdated={mutate} />
+      <IssuesLayout
+        applicationId={applicationId}
+        aggregate={data}
+        onUpdated={mutate}
+        initialIssueId={initialIssueId}
+      />
     </div>
   );
 }
@@ -110,20 +151,57 @@ interface IssuesLayoutProps {
   applicationId: string;
   aggregate: ApplicationAggregateDto;
   onUpdated: () => Promise<any>;
+  initialIssueId?: string;
 }
 
-function IssuesLayout({ applicationId, aggregate, onUpdated }: IssuesLayoutProps) {
+function IssuesLayout({ applicationId, aggregate, onUpdated, initialIssueId }: IssuesLayoutProps) {
   const { mutate: globalMutate } = useSWRConfig();
   const { application } = aggregate;
   const [issueDraft, setIssueDraft] = useState<IssueDraft>(() => emptyIssueDraft());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editDraft, setEditDraft] = useState<IssueEditDraft | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingIssueId, setDeletingIssueId] = useState<string | null>(null);
+  const initialIssueAppliedRef = useRef<string | null>(null);
+  const issues = aggregate.issues ?? [];
 
   useEffect(() => {
     setIssueDraft(emptyIssueDraft());
+    setEditDraft(null);
+    setEditError(null);
+    setEditSaving(false);
+    setDeletingIssueId(null);
+    initialIssueAppliedRef.current = null;
   }, [application.applicationId]);
 
   const controls = useMemo(() => buildIssueControls(setIssueDraft), []);
+  const updateEditDraft = useCallback(<T extends keyof IssueEditDraft>(field: T, value: IssueEditDraft[T]) => {
+    setEditDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
+  }, []);
+
+  useEffect(() => {
+    if (!initialIssueId) {
+      initialIssueAppliedRef.current = null;
+      return;
+    }
+    if (initialIssueAppliedRef.current === initialIssueId) {
+      return;
+    }
+    const match = issues.find((issue) => issue.issueId === initialIssueId);
+    if (match) {
+      setEditDraft(issueToEditDraft(match));
+      initialIssueAppliedRef.current = initialIssueId;
+    }
+  }, [initialIssueId, issues]);
+
+  const editingIssue = useMemo(() => {
+    if (!editDraft) {
+      return null;
+    }
+    return issues.find((issue) => issue.issueId === editDraft.issueId) ?? null;
+  }, [issues, editDraft]);
 
   async function handleCreateIssue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -168,12 +246,116 @@ function IssuesLayout({ applicationId, aggregate, onUpdated }: IssuesLayoutProps
         refreshApplicationCaches(globalMutate, applicationId),
         globalMutate(SWR_KEYS.dashboardOverview),
       ]);
+      setEditDraft((prev) => (prev?.issueId === issueId ? null : prev));
+      setEditError(null);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Failed to resolve issue');
     }
   }
 
-  const issues = aggregate.issues ?? [];
+  async function handleDeleteIssue(issue: IssueDto) {
+    const confirmed = window.confirm(`Delete issue "${issue.title}"? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+    setDeletingIssueId(issue.issueId);
+    try {
+      await deleteIssue(applicationId, issue.issueId);
+      await removeIssueFromCaches(globalMutate, issue);
+      await Promise.all([
+        onUpdated(),
+        refreshApplicationCaches(globalMutate, applicationId),
+        globalMutate(SWR_KEYS.dashboardOverview),
+      ]);
+      setEditDraft((prev) => (prev?.issueId === issue.issueId ? null : prev));
+      if (initialIssueAppliedRef.current === issue.issueId) {
+        initialIssueAppliedRef.current = null;
+      }
+      setEditError(null);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Failed to delete issue');
+    } finally {
+      setDeletingIssueId(null);
+    }
+  }
+
+  function handleStartEditing(issue: IssueDto) {
+    setEditError(null);
+    setEditDraft(issueToEditDraft(issue));
+  }
+
+  function handleCancelEdit() {
+    setEditDraft(null);
+    setEditError(null);
+  }
+
+  async function handleUpdateIssue(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editDraft) {
+      return;
+    }
+
+    const title = editDraft.title.trim();
+    const description = editDraft.description.trim();
+    if (!title) {
+      setEditError('Title is required.');
+      return;
+    }
+    if (!description) {
+      setEditError('Description is required.');
+      return;
+    }
+    if (!editDraft.dateRaised) {
+      setEditError('Date raised is required.');
+      return;
+    }
+
+    const assignedTo = editDraft.assignedTo.trim();
+    const raisedBy = editDraft.raisedBy.trim();
+    const resolutionNotes = editDraft.resolutionNotes.trim();
+    const dueDate = editDraft.dueDate.trim();
+    const dateResolved = editDraft.dateResolved.trim();
+
+    if (editDraft.status === 'Resolved' && !resolutionNotes) {
+      setEditError('Resolution notes are required when resolving an issue.');
+      return;
+    }
+
+    const includeResolutionData = editDraft.status === 'Resolved' || editDraft.status === 'Closed';
+
+    const payload: Record<string, unknown> = {
+      title,
+      category: editDraft.category,
+      description,
+      raisedBy: raisedBy || null,
+      assignedTo: assignedTo || null,
+      status: editDraft.status,
+      dateRaised: editDraft.dateRaised,
+      dueDate: dueDate || null,
+      resolutionNotes: includeResolutionData ? resolutionNotes || null : null,
+      dateResolved: includeResolutionData ? dateResolved || null : null,
+    };
+
+    if (editDraft.status === 'Resolved' && !payload.dateResolved) {
+      payload.dateResolved = new Date().toISOString().slice(0, 10);
+    }
+
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await updateIssue(applicationId, editDraft.issueId, payload);
+      await Promise.all([
+        onUpdated(),
+        refreshApplicationCaches(globalMutate, applicationId),
+        globalMutate(SWR_KEYS.dashboardOverview),
+      ]);
+      setEditDraft(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update issue');
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   return (
     <div style={issuesLayout}>
@@ -188,80 +370,240 @@ function IssuesLayout({ applicationId, aggregate, onUpdated }: IssuesLayoutProps
           <p style={emptyState}>No issues recorded yet.</p>
         ) : (
           <ul style={issuesList}>
-            {issues.map((issue) => (
-              <li key={issue.issueId} style={issueRow}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={issueTitle}>{issue.title}</span>
-                  <span style={issueMeta}>
-                    {issue.category} • Raised {formatDate(issue.dateRaised)}
-                    {issue.assignedTo ? ` • Assigned to ${issue.assignedTo}` : ''}
-                  </span>
-                </div>
+            {issues.map((issue) => {
+              const isEditing = editDraft?.issueId === issue.issueId;
+              return (
+                <li key={issue.issueId} style={{ ...issueRow, outline: isEditing ? '2px solid var(--primary)' : undefined }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={issueTitle}>{issue.title}</span>
+                    <span style={issueMeta}>
+                      {issue.category} • Raised {formatDate(issue.dateRaised)}
+                      {issue.assignedTo ? ` • Assigned to ${issue.assignedTo}` : ''}
+                    </span>
+                  </div>
                 <div style={issueActions}>
                   <span style={statusPill(issue.status)}>{issue.status}</span>
+                  <button
+                    type="button"
+                    style={{ ...linkButton, opacity: isEditing ? 0.6 : 1 }}
+                    onClick={() => handleStartEditing(issue)}
+                    disabled={deletingIssueId === issue.issueId || (isEditing && editSaving)}
+                  >
+                    {isEditing ? 'Editing…' : 'Edit'}
+                  </button>
+                  <button
+                    type="button"
+                    style={dangerLinkButton}
+                    onClick={() => handleDeleteIssue(issue)}
+                    disabled={deletingIssueId === issue.issueId}
+                  >
+                    {deletingIssueId === issue.issueId ? 'Deleting…' : 'Delete'}
+                  </button>
                   {issue.status !== 'Resolved' && issue.status !== 'Closed' && (
-                    <button type="button" style={secondaryButton} onClick={() => handleResolveIssue(issue.issueId)}>
+                    <button
+                      type="button"
+                      style={secondaryButton}
+                      onClick={() => handleResolveIssue(issue.issueId)}
+                      disabled={deletingIssueId === issue.issueId}
+                    >
                       Mark resolved
                     </button>
                   )}
-                </div>
-              </li>
-            ))}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
 
       <section style={formCard}>
-        <h2 style={{ margin: '0 0 12px' }}>Log new issue</h2>
-        <form onSubmit={handleCreateIssue} style={formLayout}>
-          <label style={labelStyle}>
-            Title
-            <input required value={issueDraft.title} onChange={controls.updateText('title')} style={inputStyle} />
-          </label>
-          <label style={labelStyle}>
-            Category
-            <select value={issueDraft.category} onChange={controls.updateSelect('category')} style={inputStyle}>
-              {ISSUE_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={labelStyle}>
-            Description
-            <textarea
-              required
-              value={issueDraft.description}
-              onChange={controls.updateTextArea('description')}
-              style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
-            />
-          </label>
-          <div style={gridLayout}>
+        <h2 style={{ margin: '0 0 12px' }}>{editDraft ? 'Edit issue' : 'Log new issue'}</h2>
+        {editDraft ? (
+          <form onSubmit={handleUpdateIssue} style={formLayout}>
             <label style={labelStyle}>
-              Raised by
-              <input value={issueDraft.raisedBy} onChange={controls.updateText('raisedBy')} style={inputStyle} />
+              Title
+              <input
+                required
+                value={editDraft.title}
+                onChange={(event) => updateEditDraft('title', event.target.value)}
+                style={inputStyle}
+              />
             </label>
             <label style={labelStyle}>
-              Assigned to
-              <input value={issueDraft.assignedTo} onChange={controls.updateText('assignedTo')} style={inputStyle} />
+              Category
+              <select
+                value={editDraft.category}
+                onChange={(event) => updateEditDraft('category', event.target.value)}
+                style={inputStyle}
+              >
+                {ISSUE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </label>
             <label style={labelStyle}>
-              Date raised
-              <input type="date" value={issueDraft.dateRaised} onChange={controls.updateText('dateRaised')} style={inputStyle} />
+              Description
+              <textarea
+                required
+                value={editDraft.description}
+                onChange={(event) => updateEditDraft('description', event.target.value)}
+                style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
+              />
+            </label>
+            <div style={gridLayout}>
+              <label style={labelStyle}>
+                Raised by
+                <input
+                  value={editDraft.raisedBy}
+                  onChange={(event) => updateEditDraft('raisedBy', event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={labelStyle}>
+                Assigned to
+                <input
+                  value={editDraft.assignedTo}
+                  onChange={(event) => updateEditDraft('assignedTo', event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={labelStyle}>
+                Date raised
+                <input
+                  type="date"
+                  value={editDraft.dateRaised}
+                  onChange={(event) => updateEditDraft('dateRaised', event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={labelStyle}>
+                Due date
+                <input
+                  type="date"
+                  value={editDraft.dueDate}
+                  onChange={(event) => updateEditDraft('dueDate', event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={labelStyle}>
+                Status
+                <select
+                  value={editDraft.status}
+                  onChange={(event) => updateEditDraft('status', event.target.value as IssueStatus)}
+                  style={inputStyle}
+                >
+                  {ISSUE_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {(editDraft.status === 'Resolved' || editDraft.status === 'Closed') && (
+              <>
+                <label style={labelStyle}>
+                  Date resolved
+                  <input
+                    type="date"
+                    value={editDraft.dateResolved}
+                    onChange={(event) => updateEditDraft('dateResolved', event.target.value)}
+                    style={inputStyle}
+                  />
+                </label>
+                <label style={labelStyle}>
+                  Resolution notes
+                  <textarea
+                    value={editDraft.resolutionNotes}
+                    onChange={(event) => updateEditDraft('resolutionNotes', event.target.value)}
+                    style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
+                  />
+                </label>
+              </>
+            )}
+            {editError && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{editError}</p>}
+            <div style={actionsRow}>
+              {editingIssue && (
+                <button
+                  type="button"
+                  style={{ ...dangerButton, marginRight: 'auto' }}
+                  onClick={() => handleDeleteIssue(editingIssue)}
+                  disabled={deletingIssueId === editingIssue.issueId || editSaving}
+                >
+                  {deletingIssueId === editingIssue.issueId ? 'Deleting…' : 'Delete issue'}
+                </button>
+              )}
+              <button
+                type="button"
+                style={secondaryButton}
+                onClick={handleCancelEdit}
+                disabled={editSaving || (editingIssue && deletingIssueId === editingIssue.issueId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={primaryButton}
+                disabled={editSaving || (editingIssue && deletingIssueId === editingIssue.issueId)}
+              >
+                {editSaving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleCreateIssue} style={formLayout}>
+            <label style={labelStyle}>
+              Title
+              <input required value={issueDraft.title} onChange={controls.updateText('title')} style={inputStyle} />
             </label>
             <label style={labelStyle}>
-              Due date
-              <input type="date" value={issueDraft.dueDate} onChange={controls.updateText('dueDate')} style={inputStyle} />
+              Category
+              <select value={issueDraft.category} onChange={controls.updateSelect('category')} style={inputStyle}>
+                {ISSUE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </label>
-          </div>
-          {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
-          <div style={actionsRow}>
-            <button type="submit" style={primaryButton} disabled={saving}>
-              {saving ? 'Saving…' : 'Add issue'}
-            </button>
-          </div>
-        </form>
+            <label style={labelStyle}>
+              Description
+              <textarea
+                required
+                value={issueDraft.description}
+                onChange={controls.updateTextArea('description')}
+                style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
+              />
+            </label>
+            <div style={gridLayout}>
+              <label style={labelStyle}>
+                Raised by
+                <input value={issueDraft.raisedBy} onChange={controls.updateText('raisedBy')} style={inputStyle} />
+              </label>
+              <label style={labelStyle}>
+                Assigned to
+                <input value={issueDraft.assignedTo} onChange={controls.updateText('assignedTo')} style={inputStyle} />
+              </label>
+              <label style={labelStyle}>
+                Date raised
+                <input type="date" value={issueDraft.dateRaised} onChange={controls.updateText('dateRaised')} style={inputStyle} />
+              </label>
+              <label style={labelStyle}>
+                Due date
+                <input type="date" value={issueDraft.dueDate} onChange={controls.updateText('dueDate')} style={inputStyle} />
+              </label>
+            </div>
+            {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+            <div style={actionsRow}>
+              <button type="submit" style={primaryButton} disabled={saving}>
+                {saving ? 'Saving…' : 'Add issue'}
+              </button>
+            </div>
+          </form>
+        )}
       </section>
     </div>
   );
@@ -453,6 +795,7 @@ const inputStyle: CSSProperties = {
 const actionsRow: CSSProperties = {
   display: 'flex',
   justifyContent: 'flex-end',
+  gap: 12,
 };
 
 const primaryButton: CSSProperties = {
@@ -473,4 +816,29 @@ const secondaryButton: CSSProperties = {
   fontWeight: 600,
   padding: '10px 18px',
   cursor: 'pointer',
+};
+
+const linkButton: CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--primary)',
+  borderRadius: 999,
+  fontWeight: 600,
+  padding: '10px 12px',
+  cursor: 'pointer',
+};
+
+const dangerButton: CSSProperties = {
+  background: 'var(--danger)',
+  border: 'none',
+  color: '#fff',
+  borderRadius: 999,
+  fontWeight: 600,
+  padding: '10px 18px',
+  cursor: 'pointer',
+};
+
+const dangerLinkButton: CSSProperties = {
+  ...linkButton,
+  color: 'var(--danger)',
 };

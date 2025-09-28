@@ -63,6 +63,11 @@ interface UpdateIssueInput {
   updates: Partial<Pick<Issue, 'title' | 'category' | 'description' | 'raisedBy' | 'assignedTo' | 'status' | 'dueDate' | 'resolutionNotes' | 'dateResolved'>>;
 }
 
+interface DeleteIssueInput {
+  applicationId: string;
+  issueId: string;
+}
+
 interface CreateExtensionInput {
   requestedDate?: string;
   agreedDate: string;
@@ -330,4 +335,34 @@ export async function updateIssue({ applicationId, issueId, updates }: UpdateIss
       await repository.putTimelineEvent(buildTimelineEvent(applicationId, 'Live', 'Revalidated after issue resolution'));
     }
   }
+}
+
+export async function deleteIssue({ applicationId, issueId }: DeleteIssueInput) {
+  const existing = await repository.getIssue(applicationId, issueId);
+  if (!existing) {
+    throw new Error('Issue not found');
+  }
+
+  await repository.deleteIssue(applicationId, issueId);
+
+  const aggregate = await repository.getApplicationAggregate(applicationId);
+  if (!aggregate) {
+    return;
+  }
+
+  const unresolved = aggregate.issues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
+  await repository.updateApplication(
+    applicationId,
+    { issuesCount: unresolved.length },
+    aggregate.application
+  );
+
+  await repository.putTimelineEvent(
+    buildTimelineEvent(
+      applicationId,
+      aggregate.application.status,
+      `Issue Deleted: ${existing.title}`,
+      existing.description
+    )
+  );
 }

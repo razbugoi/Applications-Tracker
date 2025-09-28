@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import useSWR from 'swr';
-import { listIssues, SWR_KEYS, type IssueDto } from '@/lib/api';
+import useSWR, { useSWRConfig } from 'swr';
+import { deleteIssue, listIssues, SWR_KEYS, type IssueDto } from '@/lib/api';
+import { refreshApplicationCaches, removeIssueFromCaches } from '@/lib/applicationCache';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useAppNavigation } from '@/lib/useAppNavigation';
 
@@ -15,14 +16,37 @@ const FILTERS: { label: string; value: IssueDto['status'] | 'All' }[] = [
 ];
 
 export function IssuesPage() {
+  const { mutate: globalMutate } = useSWRConfig();
   const [filter, setFilter] = useState<'All' | IssueDto['status']>('All');
-  const { data, isLoading, error } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     SWR_KEYS.issues(filter),
     () => listIssues(filter === 'All' ? undefined : filter)
   );
+  const [deletingIssueId, setDeletingIssueId] = useState<string | null>(null);
   const { goToApplication } = useAppNavigation();
 
   const items = data?.items ?? [];
+
+  async function handleDelete(issue: IssueDto) {
+    const confirmed = window.confirm(`Delete issue "${issue.title}"? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+    setDeletingIssueId(issue.issueId);
+    try {
+      await deleteIssue(issue.applicationId, issue.issueId);
+      await removeIssueFromCaches(globalMutate, issue);
+      await Promise.all([
+        refreshApplicationCaches(globalMutate, issue.applicationId),
+        globalMutate(SWR_KEYS.dashboardOverview),
+      ]);
+      await mutate();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Failed to delete issue');
+    } finally {
+      setDeletingIssueId(null);
+    }
+  }
 
   return (
     <main style={layout}>
@@ -74,17 +98,18 @@ export function IssuesPage() {
                   <th scope="col">Raised</th>
                   <th scope="col">Due</th>
                   <th scope="col">Assigned</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((issue, index) => (
                   <tr
                     key={issue.issueId}
-                    onClick={() => goToApplication(issue.applicationId)}
+                    onClick={() => goToApplication(issue.applicationId, 'issues', { issueId: issue.issueId })}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        goToApplication(issue.applicationId);
+                        goToApplication(issue.applicationId, 'issues', { issueId: issue.issueId });
                       }
                     }}
                     tabIndex={0}
@@ -103,6 +128,31 @@ export function IssuesPage() {
                     <td>{formatDate(issue.dateRaised)}</td>
                     <td>{formatDate(issue.dueDate)}</td>
                     <td>{issue.assignedTo ?? '—'}</td>
+                    <td>
+                      <div style={actionsCell}>
+                        <button
+                          type="button"
+                          style={actionButton}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            goToApplication(issue.applicationId, 'issues', { issueId: issue.issueId });
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          style={dangerActionButton}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDelete(issue);
+                          }}
+                          disabled={deletingIssueId === issue.issueId}
+                        >
+                          {deletingIssueId === issue.issueId ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -166,4 +216,26 @@ const spinnerWrapper: CSSProperties = {
   display: 'flex',
   justifyContent: 'center',
   padding: 32,
+};
+
+const actionsCell: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: 8,
+};
+
+const actionButton: CSSProperties = {
+  borderRadius: 999,
+  border: '1px solid var(--border)',
+  background: 'transparent',
+  padding: '6px 12px',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const dangerActionButton: CSSProperties = {
+  ...actionButton,
+  borderColor: 'var(--danger)',
+  color: 'var(--danger)',
 };

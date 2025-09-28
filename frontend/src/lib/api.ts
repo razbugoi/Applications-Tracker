@@ -76,6 +76,12 @@ export async function updateIssue(applicationId: string, issueId: string, payloa
   });
 }
 
+export async function deleteIssue(applicationId: string, issueId: string) {
+  return request<void>(`/applications/${applicationId}/issues/${issueId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function updateApplication(applicationId: string, payload: Record<string, unknown>) {
   return request<void>(`/applications/${applicationId}`, {
     method: 'PATCH',

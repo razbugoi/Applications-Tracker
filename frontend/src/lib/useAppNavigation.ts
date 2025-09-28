@@ -17,12 +17,15 @@ export function useAppNavigation() {
   );
 
   const goToApplication = useCallback(
-    (id: string, view?: 'edit' | 'issues' | 'timeline') => {
+    (id: string, view?: 'edit' | 'issues' | 'timeline', options?: { issueId?: string }) => {
       let path: Route = routes.applications.detail(id);
       if (view === 'edit') {
         path = routes.applications.edit(id);
       } else if (view === 'issues') {
         path = routes.applications.issues(id);
+        if (options?.issueId) {
+          path = `${path}?issueId=${options.issueId}` as Route;
+        }
       } else if (view === 'timeline') {
         path = routes.applications.timeline(id);
       }

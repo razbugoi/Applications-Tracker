@@ -392,4 +392,12 @@ export class SupabaseRepository {
       throw new Error(`Failed to update issue: ${error.message}`);
     }
   }
+
+  async deleteIssue(applicationId: string, issueId: string): Promise<void> {
+    const supabase = this.clientFactory();
+    const { error } = await supabase.from('issues').delete().eq('id', issueId).eq('application_id', applicationId);
+    if (error) {
+      throw new Error(`Failed to delete issue: ${error.message}`);
+    }
+  }
 }

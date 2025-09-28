@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
+import { ApiAuthError, requireAuthenticatedTeamMember } from '@/server/auth/guards';
 import { createIssue } from '@/server/services/applicationService';
 import { toIssueDto } from '@/server/serializers/applicationSerializers';
+
+export const dynamic = 'force-dynamic';
 
 const issueSchema = z.object({
   ppReference: z.string().min(1),
@@ -25,6 +28,11 @@ function normalise(value: string | null | undefined) {
 }
 
 export async function POST(request: NextRequest, { params }: { params: { applicationId: string } }) {
+  const auth = await authenticate();
+  if ('response' in auth) {
+    return auth.response;
+  }
+
   const json = await request.json().catch(() => null);
   const parseResult = issueSchema.safeParse(json ?? {});
   if (!parseResult.success) {
@@ -34,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: { applica
   const payload = parseResult.data;
 
   try {
-    const issue = await createIssue({
+    const issue = await createIssue(auth.context, {
       applicationId: params.applicationId,
       ppReference: payload.ppReference,
       lpaReference: normalise(payload.lpaReference),
@@ -51,5 +59,21 @@ export async function POST(request: NextRequest, { params }: { params: { applica
   } catch (error) {
     console.error('Failed to create issue', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+}
+
+async function authenticate(): Promise<
+  | { context: Awaited<ReturnType<typeof requireAuthenticatedTeamMember>> }
+  | { response: NextResponse }
+> {
+  try {
+    const context = await requireAuthenticatedTeamMember();
+    return { context };
+  } catch (error) {
+    if (error instanceof ApiAuthError) {
+      return { response: NextResponse.json({ error: error.message }, { status: error.status }) };
+    }
+    console.error('Unhandled authentication failure', error);
+    return { response: NextResponse.json({ error: 'Unable to verify authentication' }, { status: 500 }) };
   }
 }

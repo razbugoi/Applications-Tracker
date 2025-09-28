@@ -9,11 +9,19 @@ interface Props {
 }
 
 export function RouteGuard({ children }: Props) {
-  const { isAuthenticated, signInWithPassword, signUpWithPassword, sendMagicLink } = useAuth();
+  const { isAuthenticated, isInitialising, signInWithPassword, signUpWithPassword, sendMagicLink } = useAuth();
   const bypassAuth = process.env.NEXT_PUBLIC_SUPABASE_BYPASS_AUTH === 'true';
 
   if (bypassAuth) {
     return <>{children}</>;
+  }
+
+  if (isInitialising) {
+    return (
+      <div style={loadingWrapper}>
+        <LoadingSpinner size="md" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -375,6 +383,14 @@ function SignUpForm({
     </>
   );
 }
+
+const loadingWrapper: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '60vh',
+  width: '100%',
+};
 
 const guardWrapper: CSSProperties = {
   display: 'flex',

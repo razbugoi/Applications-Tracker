@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseBrowserClient';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
+  isInitialising: boolean;
   user: User | null;
   session: Session | null;
   signInWithPassword: (email: string, password: string) => Promise<void>;
@@ -28,18 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isInitialising, setIsInitialising] = useState(true);
 
   useEffect(() => {
     if (!supabase) {
+      setIsInitialising(false);
       return;
     }
     let isMounted = true;
 
-    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
-      if (!isMounted) return;
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!isMounted) return;
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      })
+      .catch((error) => {
+        console.error('Failed to resolve Supabase session', error);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsInitialising(false);
+        }
+      });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((
       _event: AuthChangeEvent,
@@ -47,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      setIsInitialising(false);
     });
 
     return () => {
@@ -57,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextValue = {
     isAuthenticated: Boolean(user),
+    isInitialising,
     user,
     session,
     async signInWithPassword(email: string, password: string) {

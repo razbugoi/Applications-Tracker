@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
+import { ApiAuthError, requireAuthenticatedTeamMember } from '@/server/auth/guards';
 import { deleteIssue, updateIssue } from '@/server/services/applicationService';
+
+export const dynamic = 'force-dynamic';
 
 const updateIssueSchema = z
   .object({
@@ -26,6 +29,11 @@ function normalise(value: string | null | undefined) {
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { applicationId: string; issueId: string } }) {
+  const auth = await authenticate();
+  if ('response' in auth) {
+    return auth.response;
+  }
+
   const json = await request.json().catch(() => null);
   if (!json) {
     return NextResponse.json({ error: 'Payload required' }, { status: 400 });
@@ -37,7 +45,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { applic
   const payload = parseResult.data;
 
   try {
-    await updateIssue({
+    await updateIssue(auth.context, {
       applicationId: params.applicationId,
       issueId: params.issueId,
       updates: {
@@ -57,11 +65,32 @@ export async function PATCH(request: NextRequest, { params }: { params: { applic
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: { applicationId: string; issueId: string } }) {
+  const auth = await authenticate();
+  if ('response' in auth) {
+    return auth.response;
+  }
+
   try {
-    await deleteIssue({ applicationId: params.applicationId, issueId: params.issueId });
+    await deleteIssue(auth.context, { applicationId: params.applicationId, issueId: params.issueId });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Failed to delete issue', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+}
+
+async function authenticate(): Promise<
+  | { context: Awaited<ReturnType<typeof requireAuthenticatedTeamMember>> }
+  | { response: NextResponse }
+> {
+  try {
+    const context = await requireAuthenticatedTeamMember();
+    return { context };
+  } catch (error) {
+    if (error instanceof ApiAuthError) {
+      return { response: NextResponse.json({ error: error.message }, { status: error.status }) };
+    }
+    console.error('Unhandled authentication failure', error);
+    return { response: NextResponse.json({ error: 'Unable to verify authentication' }, { status: 500 }) };
   }
 }

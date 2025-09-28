@@ -3,7 +3,7 @@
 import useSWR from 'swr';
 import { useMemo, useState, type CSSProperties } from 'react';
 import {
-  listApplications,
+  listAllApplications,
   fetchApplication,
   SWR_KEYS,
   type ApplicationDto,
@@ -204,7 +204,7 @@ function buildMonthMatrix(currentMonth: Date, eventsByDay: Map<string, CalendarE
 }
 
 async function fetchApplications(): Promise<CalendarEvent[]> {
-  const responses = await Promise.all(STATUSES.map((status) => listApplications(status)));
+  const responses = await Promise.all(STATUSES.map((status) => listAllApplications(status)));
   const applications = responses.flatMap((response) => response.items);
 
   const extensionCandidates = applications.filter((application) => application.eotDate);

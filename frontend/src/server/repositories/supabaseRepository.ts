@@ -8,11 +8,11 @@ import type {
   TimelineEvent,
 } from '../models/application';
 
-const DEFAULT_TEAM_ID = process.env.SUPABASE_DEFAULT_TEAM_ID ?? '00000000-0000-0000-0000-000000000001';
-
 function mapApplicationRow(row: any): Application {
   return {
     applicationId: row.id,
+    teamId: row.team_id,
+    createdBy: row.created_by,
     prjCodeName: row.prj_code_name,
     ppReference: row.pp_reference,
     lpaReference: row.lpa_reference,
@@ -82,23 +82,25 @@ function mapExtensionRow(row: any): ExtensionOfTime {
   };
 }
 
+interface ListApplicationsOptions {
+  limit?: number;
+  cursor?: string | null;
+}
+
 export class SupabaseRepository {
   private clientFactory() {
     const client = createSupabaseServiceRoleClient();
     return client;
   }
 
-  async createApplication(application: Application): Promise<void> {
+  async createApplication(teamId: string, application: Application): Promise<void> {
     const supabase = this.clientFactory();
-    console.log('[SupabaseRepository] using client', {
-      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      keyPrefix: (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').slice(0, 10),
-    });
     const { error } = await supabase
       .from('applications')
       .insert({
         id: application.applicationId,
-        team_id: DEFAULT_TEAM_ID,
+        team_id: teamId,
+        created_by: application.createdBy ?? null,
         prj_code_name: application.prjCodeName,
         pp_reference: application.ppReference,
         lpa_reference: application.lpaReference,
@@ -123,22 +125,32 @@ export class SupabaseRepository {
     }
   }
 
-  async listApplicationsByStatus(status: ApplicationStatus, limit = 50, _next?: Record<string, string>) {
+  async listApplicationsByStatus(
+    teamId: string,
+    status: ApplicationStatus,
+    options: ListApplicationsOptions = {}
+  ) {
     const supabase = this.clientFactory();
-    const { data, error } = await supabase
+    const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
+    const cursorValue = options.cursor ? Number.parseInt(options.cursor, 10) : 0;
+    const offset = Number.isFinite(cursorValue) && cursorValue > 0 ? cursorValue : 0;
+    const { data, error, count } = await supabase
       .from('applications')
-      .select('*')
+      .select('*', { count: 'exact' })
+      .eq('team_id', teamId)
       .eq('status', status)
       .order('submission_date', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
     if (error) {
       throw new Error(`Failed to list applications: ${error.message}`);
     }
     const applications = (data ?? []).map(mapApplicationRow);
-    return { items: applications, next: undefined };
+    const total = count ?? applications.length;
+    const next = total > offset + limit ? String(offset + limit) : null;
+    return { items: applications, next, total };
   }
 
-  async getApplicationAggregate(applicationId: string): Promise<ApplicationAggregate | null> {
+  async getApplicationAggregate(teamId: string, applicationId: string): Promise<ApplicationAggregate | null> {
     const supabase = this.clientFactory();
     const { data, error } = await supabase
       .from('applications')
@@ -149,6 +161,7 @@ export class SupabaseRepository {
         extensions_of_time (*)`
       )
       .eq('id', applicationId)
+      .eq('team_id', teamId)
       .maybeSingle();
     if (error) {
       throw new Error(`Failed to fetch application: ${error.message}`);
@@ -168,11 +181,16 @@ export class SupabaseRepository {
     return { application, issues, timeline, extensions };
   }
 
-  async updateApplication(applicationId: string, attributes: Partial<Application>, current?: Application): Promise<void> {
+  async updateApplication(
+    teamId: string,
+    applicationId: string,
+    attributes: Partial<Application>,
+    current?: Application
+  ): Promise<void> {
     const supabase = this.clientFactory();
     let snapshot = current;
     if (!snapshot) {
-      const aggregate = await this.getApplicationAggregate(applicationId);
+      const aggregate = await this.getApplicationAggregate(teamId, applicationId);
       if (!aggregate) {
         throw new Error('Application not found');
       }
@@ -180,7 +198,7 @@ export class SupabaseRepository {
     }
 
     const payload: Record<string, unknown> = {};
-    const mappings: Record<keyof Application, string> = {
+    const mappings: Partial<Record<keyof Application, string>> = {
       applicationId: 'id',
       prjCodeName: 'prj_code_name',
       ppReference: 'pp_reference',
@@ -203,7 +221,7 @@ export class SupabaseRepository {
     } as const;
 
     (Object.keys(attributes) as (keyof Application)[]).forEach((key) => {
-      if (key === 'applicationId' || key === 'createdAt' || key === 'updatedAt') {
+      if (key === 'applicationId' || key === 'createdAt' || key === 'updatedAt' || key === 'teamId' || key === 'createdBy') {
         return;
       }
       const column = mappings[key];
@@ -221,7 +239,11 @@ export class SupabaseRepository {
       return;
     }
 
-    const { error } = await supabase.from('applications').update(payload).eq('id', applicationId);
+    const { error } = await supabase
+      .from('applications')
+      .update(payload)
+      .eq('id', applicationId)
+      .eq('team_id', teamId);
     if (error) {
       throw new Error(`Failed to update application: ${error.message}`);
     }
@@ -244,7 +266,7 @@ export class SupabaseRepository {
     }
   }
 
-  async listIssues(status?: Issue['status']): Promise<Issue[]> {
+  async listIssues(teamId: string, status?: Issue['status']): Promise<Issue[]> {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !serviceKey) {
@@ -252,7 +274,11 @@ export class SupabaseRepository {
     }
 
     const endpoint = new URL('/rest/v1/issues', url);
-    endpoint.searchParams.set('select', '*,application:applications(prj_code_name,pp_reference,lpa_reference)');
+    endpoint.searchParams.set(
+      'select',
+      '*,application:applications(prj_code_name,pp_reference,lpa_reference,team_id)'
+    );
+    endpoint.searchParams.set('application.team_id', `eq.${teamId}`);
     if (status) {
       endpoint.searchParams.set('status', `eq.${status}`);
     }
@@ -404,13 +430,14 @@ export class SupabaseRepository {
     }
   }
 
-  async getIssue(applicationId: string, issueId: string): Promise<Issue | null> {
+  async getIssue(teamId: string, applicationId: string, issueId: string): Promise<Issue | null> {
     const supabase = this.clientFactory();
     const { data, error } = await supabase
       .from('issues')
-      .select('*, application:applications (prj_code_name, pp_reference, lpa_reference)')
+      .select('*, application:applications (prj_code_name, pp_reference, lpa_reference, team_id)')
       .eq('application_id', applicationId)
       .eq('id', issueId)
+      .eq('application.team_id', teamId)
       .maybeSingle();
     if (error) {
       throw new Error(`Failed to fetch issue: ${error.message}`);
@@ -459,9 +486,13 @@ export class SupabaseRepository {
     }
   }
 
-  async deleteApplication(applicationId: string): Promise<void> {
+  async deleteApplication(teamId: string, applicationId: string): Promise<void> {
     const supabase = this.clientFactory();
-    const { error } = await supabase.from('applications').delete().eq('id', applicationId);
+    const { error } = await supabase
+      .from('applications')
+      .delete()
+      .eq('id', applicationId)
+      .eq('team_id', teamId);
     if (error) {
       throw new Error(`Failed to delete application: ${error.message}`);
     }

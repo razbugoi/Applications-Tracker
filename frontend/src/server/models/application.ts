@@ -3,6 +3,8 @@ export type ApplicationOutcome = 'Approved' | 'Refused' | 'Withdrawn' | 'Pending
 
 export interface Application {
   applicationId: string;
+  teamId: string;
+  createdBy?: string | null;
   prjCodeName: string;
   ppReference: string;
   lpaReference?: string | null;

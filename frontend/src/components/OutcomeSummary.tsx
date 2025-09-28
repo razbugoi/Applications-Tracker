@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { listApplications, SWR_KEYS, type ApplicationDto } from '@/lib/api';
+import { listAllApplications, SWR_KEYS, type ApplicationDto } from '@/lib/api';
 import type { CSSProperties } from 'react';
 
 interface DistributionItem {
@@ -12,7 +12,7 @@ interface DistributionItem {
 
 export function OutcomeSummary() {
   const { data, error, isLoading } = useSWR(SWR_KEYS.outcomeSummary(), async () => {
-    const response = await listApplications('Determined');
+    const response = await listAllApplications('Determined');
     return response.items;
   });
 

@@ -15,6 +15,17 @@ const SWR_KEY_PREFIX = {
   issues: `${API_BASE_PATH}/issues`,
 } as const;
 
+export interface ListApplicationsOptions {
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface ListApplicationsResponse {
+  items: ApplicationDto[];
+  nextToken: string | null;
+  totalCount: number;
+}
+
 export const SWR_KEYS = {
   dashboardOverview: 'dashboard-overview' as const,
   applicationsByStatus: (status: ApplicationStatus) => [SWR_KEY_PREFIX.applications, 'status', status] as const,
@@ -47,11 +58,26 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export type { ApplicationDto, ApplicationAggregateDto, IssueDto, TimelineEventDto, ExtensionDto };
 
-export async function listApplications(status: ApplicationStatus) {
-  const response = await request<{ items: ApplicationDto[]; nextToken?: string }>(
-    `/applications?status=${encodeURIComponent(status)}`
+export async function listApplications(
+  status: ApplicationStatus,
+  options: ListApplicationsOptions = {}
+): Promise<ListApplicationsResponse> {
+  const params = new URLSearchParams({ status });
+  if (options.limit) {
+    params.set('limit', String(options.limit));
+  }
+  if (options.cursor) {
+    params.set('cursor', options.cursor);
+  }
+
+  const response = await request<{ items: ApplicationDto[]; nextToken?: string | null; totalCount?: number }>(
+    `/applications?${params.toString()}`
   );
-  return { ...response, items: sortApplicationsByProjectCode(response.items) };
+  return {
+    items: sortApplicationsByProjectCode(response.items),
+    nextToken: response.nextToken ?? null,
+    totalCount: response.totalCount ?? response.items.length,
+  };
 }
 
 export async function createApplication(payload: Record<string, unknown>) {
@@ -59,6 +85,21 @@ export async function createApplication(payload: Record<string, unknown>) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function listAllApplications(status: ApplicationStatus, pageSize = 100) {
+  const items: ApplicationDto[] = [];
+  let cursor: string | null = null;
+  let totalCount = 0;
+
+  do {
+    const response = await listApplications(status, { limit: pageSize, cursor });
+    items.push(...response.items);
+    totalCount = response.totalCount;
+    cursor = response.nextToken;
+  } while (cursor);
+
+  return { items: sortApplicationsByProjectCode(items), totalCount };
 }
 
 export async function fetchApplication(applicationId: string) {

@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { Route } from 'next';
-import { listApplications, listIssues, fetchApplication, SWR_KEYS, type IssueDto } from '@/lib/api';
+import { listAllApplications, listIssues, fetchApplication, SWR_KEYS, type IssueDto } from '@/lib/api';
 import type { ApplicationDto, ApplicationAggregateDto, ExtensionDto } from '@/types/application';
 import { NewApplicationForm } from '@/components/NewApplicationForm';
 import { useAppNavigation } from '@/lib/useAppNavigation';
@@ -53,18 +53,18 @@ export default function DashboardPage() {
   const { goToApplication } = useAppNavigation();
   const { data, isLoading, error } = useSWR(SWR_KEYS.dashboardOverview, async () => {
     const [submitted, invalidated, live, determined, issues] = await Promise.all([
-      listApplications('Submitted'),
-      listApplications('Invalidated'),
-      listApplications('Live'),
-      listApplications('Determined'),
+      listAllApplications('Submitted'),
+      listAllApplications('Invalidated'),
+      listAllApplications('Live'),
+      listAllApplications('Determined'),
       listIssues(),
     ]);
 
     const counts = {
-      Submitted: submitted.items.length,
-      Invalidated: invalidated.items.length,
-      Live: live.items.length,
-      Determined: determined.items.length,
+      Submitted: submitted.totalCount,
+      Invalidated: invalidated.totalCount,
+      Live: live.totalCount,
+      Determined: determined.totalCount,
       Issues: issues.items.length,
     };
 

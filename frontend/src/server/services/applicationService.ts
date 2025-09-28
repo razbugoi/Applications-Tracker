@@ -12,6 +12,16 @@ import { SupabaseRepository } from '../repositories/supabaseRepository';
 
 const repository = new SupabaseRepository();
 
+interface ServiceContext {
+  teamId: string;
+  userId: string;
+}
+
+interface ListApplicationsOptions {
+  limit?: number;
+  cursor?: string | null;
+}
+
 interface CreateApplicationInput {
   prjCodeName: string;
   ppReference: string;
@@ -104,11 +114,13 @@ function buildTimelineEvent(applicationId: string, stage: ApplicationStatus, eve
   };
 }
 
-export async function createApplication(input: CreateApplicationInput): Promise<Application> {
+export async function createApplication(context: ServiceContext, input: CreateApplicationInput): Promise<Application> {
   const applicationId = randomUUID();
   const now = nowIso();
   const application: Application = {
     applicationId,
+    teamId: context.teamId,
+    createdBy: context.userId,
     prjCodeName: input.prjCodeName,
     ppReference: input.ppReference,
     lpaReference: input.lpaReference,
@@ -131,7 +143,7 @@ export async function createApplication(input: CreateApplicationInput): Promise<
 
   assertDateOrder(application);
 
-  await repository.createApplication(application);
+  await repository.createApplication(context.teamId, application);
   await repository.putTimelineEvent(
     buildTimelineEvent(application.applicationId, application.status, application.status === 'Live' ? 'Validated' : 'Submitted')
   );
@@ -139,20 +151,31 @@ export async function createApplication(input: CreateApplicationInput): Promise<
   return application;
 }
 
-export async function listApplications(status: ApplicationStatus, limit = 25, next?: Record<string, string>) {
-  return repository.listApplicationsByStatus(status, limit, next);
+export async function listApplications(
+  context: ServiceContext,
+  status: ApplicationStatus,
+  options: ListApplicationsOptions = {}
+) {
+  return repository.listApplicationsByStatus(context.teamId, status, options);
 }
 
-export async function getApplication(applicationId: string): Promise<ApplicationAggregate | null> {
-  return repository.getApplicationAggregate(applicationId);
+export async function getApplication(
+  context: ServiceContext,
+  applicationId: string
+): Promise<ApplicationAggregate | null> {
+  return repository.getApplicationAggregate(context.teamId, applicationId);
 }
 
-export async function listIssues(status?: Issue['status']) {
-  return repository.listIssues(status);
+export async function listIssues(context: ServiceContext, status?: Issue['status']) {
+  return repository.listIssues(context.teamId, status);
 }
 
-export async function patchApplication(applicationId: string, updates: UpdateApplicationInput) {
-  const aggregate = await repository.getApplicationAggregate(applicationId);
+export async function patchApplication(
+  context: ServiceContext,
+  applicationId: string,
+  updates: UpdateApplicationInput
+) {
+  const aggregate = await repository.getApplicationAggregate(context.teamId, applicationId);
   if (!aggregate) {
     throw new Error('Application not found');
   }
@@ -186,6 +209,7 @@ export async function patchApplication(applicationId: string, updates: UpdateApp
   assertDateOrder(merged);
 
   await repository.updateApplication(
+    context.teamId,
     applicationId,
     {
       ...updates,
@@ -205,8 +229,8 @@ export async function patchApplication(applicationId: string, updates: UpdateApp
   }
 }
 
-export async function createIssue(input: CreateIssueInput) {
-  const aggregate = await repository.getApplicationAggregate(input.applicationId);
+export async function createIssue(context: ServiceContext, input: CreateIssueInput) {
+  const aggregate = await repository.getApplicationAggregate(context.teamId, input.applicationId);
   if (!aggregate) {
     throw new Error('Application not found');
   }
@@ -244,17 +268,21 @@ export async function createIssue(input: CreateIssueInput) {
     await repository.putTimelineEvent(buildTimelineEvent(input.applicationId, 'Invalidated', 'Application Invalidated'));
   }
 
-  await repository.updateApplication(input.applicationId, updates, aggregate.application);
+  await repository.updateApplication(context.teamId, input.applicationId, updates, aggregate.application);
 
   return issue;
 }
 
-export async function createExtensionOfTime(applicationId: string, input: CreateExtensionInput): Promise<ExtensionOfTime> {
+export async function createExtensionOfTime(
+  context: ServiceContext,
+  applicationId: string,
+  input: CreateExtensionInput
+): Promise<ExtensionOfTime> {
   if (!input.agreedDate) {
     throw new Error('agreedDate is required');
   }
 
-  const aggregate = await repository.getApplicationAggregate(applicationId);
+  const aggregate = await repository.getApplicationAggregate(context.teamId, applicationId);
   if (!aggregate) {
     throw new Error('Application not found');
   }
@@ -290,6 +318,7 @@ export async function createExtensionOfTime(applicationId: string, input: Create
 }
 
 export async function updateExtensionOfTime(
+  context: ServiceContext,
   applicationId: string,
   extensionId: string,
   input: UpdateExtensionInput
@@ -298,7 +327,7 @@ export async function updateExtensionOfTime(
     throw new Error('agreedDate is required');
   }
 
-  const aggregate = await repository.getApplicationAggregate(applicationId);
+  const aggregate = await repository.getApplicationAggregate(context.teamId, applicationId);
   if (!aggregate) {
     throw new Error('Application not found');
   }
@@ -332,17 +361,20 @@ export async function updateExtensionOfTime(
   return updated;
 }
 
-export async function deleteApplication(applicationId: string): Promise<void> {
-  const aggregate = await repository.getApplicationAggregate(applicationId);
+export async function deleteApplication(context: ServiceContext, applicationId: string): Promise<void> {
+  const aggregate = await repository.getApplicationAggregate(context.teamId, applicationId);
   if (!aggregate) {
     throw new Error('Application not found');
   }
 
-  await repository.deleteApplication(applicationId);
+  await repository.deleteApplication(context.teamId, applicationId);
 }
 
-export async function updateIssue({ applicationId, issueId, updates }: UpdateIssueInput) {
-  const existing = await repository.getIssue(applicationId, issueId);
+export async function updateIssue(
+  context: ServiceContext,
+  { applicationId, issueId, updates }: UpdateIssueInput
+) {
+  const existing = await repository.getIssue(context.teamId, applicationId, issueId);
   if (!existing) {
     throw new Error('Issue not found');
   }
@@ -362,13 +394,14 @@ export async function updateIssue({ applicationId, issueId, updates }: UpdateIss
 
   await repository.updateIssue(merged);
 
-  const aggregate = await repository.getApplicationAggregate(applicationId);
+  const aggregate = await repository.getApplicationAggregate(context.teamId, applicationId);
   if (!aggregate) {
     return;
   }
 
   const unresolved = aggregate.issues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
   await repository.updateApplication(
+    context.teamId,
     applicationId,
     { issuesCount: unresolved.length },
     aggregate.application
@@ -386,6 +419,7 @@ export async function updateIssue({ applicationId, issueId, updates }: UpdateIss
     if (unresolved.length === 0) {
       const validationDate = aggregate.application.validationDate ?? nowIso();
       await repository.updateApplication(
+        context.teamId,
         applicationId,
         { status: 'Live', validationDate },
         aggregate.application
@@ -395,21 +429,25 @@ export async function updateIssue({ applicationId, issueId, updates }: UpdateIss
   }
 }
 
-export async function deleteIssue({ applicationId, issueId }: DeleteIssueInput) {
-  const existing = await repository.getIssue(applicationId, issueId);
+export async function deleteIssue(
+  context: ServiceContext,
+  { applicationId, issueId }: DeleteIssueInput
+) {
+  const existing = await repository.getIssue(context.teamId, applicationId, issueId);
   if (!existing) {
     throw new Error('Issue not found');
   }
 
   await repository.deleteIssue(applicationId, issueId);
 
-  const aggregate = await repository.getApplicationAggregate(applicationId);
+  const aggregate = await repository.getApplicationAggregate(context.teamId, applicationId);
   if (!aggregate) {
     return;
   }
 
   const unresolved = aggregate.issues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
   await repository.updateApplication(
+    context.teamId,
     applicationId,
     { issuesCount: unresolved.length },
     aggregate.application

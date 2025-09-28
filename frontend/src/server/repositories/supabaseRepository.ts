@@ -346,6 +346,64 @@ export class SupabaseRepository {
     }
   }
 
+  async getExtension(applicationId: string, extensionId: string): Promise<ExtensionOfTime | null> {
+    const supabase = this.clientFactory();
+    const { data, error } = await supabase
+      .from('extensions_of_time')
+      .select('*')
+      .eq('application_id', applicationId)
+      .eq('id', extensionId)
+      .maybeSingle();
+    if (error) {
+      throw new Error(`Failed to fetch extension: ${error.message}`);
+    }
+    if (!data) {
+      return null;
+    }
+    return mapExtensionRow(data);
+  }
+
+  async updateExtension(extension: ExtensionOfTime): Promise<void> {
+    const supabase = this.clientFactory();
+    const { error } = await supabase
+      .from('extensions_of_time')
+      .update({
+        requested_date: extension.requestedDate,
+        agreed_date: extension.agreedDate,
+        notes: extension.notes,
+        updated_at: extension.updatedAt,
+      })
+      .eq('id', extension.extensionId)
+      .eq('application_id', extension.applicationId);
+    if (error) {
+      throw new Error(`Failed to update extension: ${error.message}`);
+    }
+  }
+
+  async refreshApplicationExtensionDate(applicationId: string): Promise<void> {
+    const supabase = this.clientFactory();
+    const { data, error } = await supabase
+      .from('extensions_of_time')
+      .select('agreed_date')
+      .eq('application_id', applicationId)
+      .order('agreed_date', { ascending: false })
+      .limit(1);
+    if (error) {
+      throw new Error(`Failed to determine latest extension: ${error.message}`);
+    }
+    const latest = data && data.length > 0 ? data[0]?.agreed_date ?? null : null;
+    const { error: updateError } = await supabase
+      .from('applications')
+      .update({
+        eot_date: latest,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', applicationId);
+    if (updateError) {
+      throw new Error(`Failed to sync application extension date: ${updateError.message}`);
+    }
+  }
+
   async getIssue(applicationId: string, issueId: string): Promise<Issue | null> {
     const supabase = this.clientFactory();
     const { data, error } = await supabase

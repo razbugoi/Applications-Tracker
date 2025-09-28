@@ -104,6 +104,17 @@ export async function createExtension(applicationId: string, payload: Record<str
   });
 }
 
+export async function updateExtension(
+  applicationId: string,
+  extensionId: string,
+  payload: Record<string, unknown>
+) {
+  return request<ExtensionDto>(`/applications/${applicationId}/extensions/${extensionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
 function sortApplicationsByProjectCode(applications: ApplicationDto[]) {
   return [...applications].sort((left, right) =>
     (left.prjCodeName ?? '').localeCompare(right.prjCodeName ?? '', undefined, {

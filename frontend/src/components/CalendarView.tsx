@@ -2,7 +2,14 @@
 
 import useSWR from 'swr';
 import { useMemo, useState, type CSSProperties } from 'react';
-import { listApplications, SWR_KEYS, type ApplicationDto } from '@/lib/api';
+import {
+  listApplications,
+  fetchApplication,
+  SWR_KEYS,
+  type ApplicationDto,
+  type ApplicationAggregateDto,
+  type ExtensionDto,
+} from '@/lib/api';
 import { useAppNavigation } from '@/lib/useAppNavigation';
 import {
   startOfMonth,
@@ -32,6 +39,7 @@ interface CalendarEvent {
   application: ApplicationDto;
   date: string;
   type: CalendarEventType;
+  details?: string;
 }
 
 export function CalendarView() {
@@ -47,6 +55,17 @@ export function CalendarView() {
         map.set(dateKey, []);
       }
       map.get(dateKey)?.push(event);
+    });
+    map.forEach((events) => {
+      events.sort((left, right) => {
+        if (left.type === right.type) {
+          return left.application.prjCodeName.localeCompare(right.application.prjCodeName, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          });
+        }
+        return left.type === 'Determination' ? -1 : 1;
+      });
     });
     return map;
   }, [data]);
@@ -129,6 +148,7 @@ function DayCell({
             key={event.id}
             type="button"
             onClick={() => onNavigate(event.application.applicationId)}
+            title={event.details ?? undefined}
             style={{
               ...eventPill,
               background: event.type === 'Determination' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(250, 204, 21, 0.25)',
@@ -187,27 +207,63 @@ async function fetchApplications(): Promise<CalendarEvent[]> {
   const responses = await Promise.all(STATUSES.map((status) => listApplications(status)));
   const applications = responses.flatMap((response) => response.items);
 
-  const events: CalendarEvent[] = [];
-  applications.forEach((application) => {
-    if (application.determinationDate) {
-      events.push({
-        id: `${application.applicationId}-determination`,
-        application,
-        date: application.determinationDate,
-        type: 'Determination',
+  const extensionCandidates = applications.filter((application) => application.eotDate);
+  const aggregates = await Promise.allSettled(
+    extensionCandidates.map((application) => fetchApplication(application.applicationId))
+  );
+
+  const extensionData = new Map<string, { application: ApplicationDto; extensions: ExtensionDto[] }>();
+  aggregates.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      const aggregate = result.value;
+      const applicationId = extensionCandidates[index].applicationId;
+      extensionData.set(applicationId, {
+        application: toCalendarApplication(aggregate.application),
+        extensions: [...aggregate.extensions].sort((left, right) => left.agreedDate.localeCompare(right.agreedDate)),
       });
     }
-    if (application.eotDate) {
+  });
+
+  const events: CalendarEvent[] = [];
+  applications.forEach((application) => {
+    const aggregate = extensionData.get(application.applicationId);
+    const applicationRecord = aggregate?.application ?? application;
+    if (applicationRecord.determinationDate) {
       events.push({
-        id: `${application.applicationId}-eot`,
-        application,
+        id: `${application.applicationId}-determination`,
+        application: applicationRecord,
+        date: applicationRecord.determinationDate,
+        type: 'Determination',
+        details: applicationRecord.description,
+      });
+    }
+    if (aggregate) {
+      aggregate.extensions.forEach((extension) => {
+        events.push({
+          id: `${application.applicationId}-extension-${extension.extensionId}`,
+          application: applicationRecord,
+          date: extension.agreedDate,
+          type: 'Extension',
+          details: extension.notes ?? undefined,
+        });
+      });
+    } else if (application.eotDate) {
+      events.push({
+        id: `${application.applicationId}-extension-latest`,
+        application: applicationRecord,
         date: application.eotDate,
         type: 'Extension',
       });
     }
   });
 
+  events.sort((left, right) => left.date.localeCompare(right.date));
   return events;
+}
+
+function toCalendarApplication(application: ApplicationAggregateDto['application']): ApplicationDto {
+  const { notes: _notes, ...rest } = application;
+  return rest;
 }
 
 const layout: CSSProperties = {

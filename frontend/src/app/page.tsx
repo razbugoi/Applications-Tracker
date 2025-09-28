@@ -4,8 +4,8 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { Route } from 'next';
-import { listApplications, listIssues, SWR_KEYS, type IssueDto } from '@/lib/api';
-import type { ApplicationDto } from '@/types/application';
+import { listApplications, listIssues, fetchApplication, SWR_KEYS, type IssueDto } from '@/lib/api';
+import type { ApplicationDto, ApplicationAggregateDto, ExtensionDto } from '@/types/application';
 import { NewApplicationForm } from '@/components/NewApplicationForm';
 import { useAppNavigation } from '@/lib/useAppNavigation';
 
@@ -41,6 +41,14 @@ const STATUS_META = [
   href: Route;
 }>;
 
+interface UpcomingDeterminationEvent {
+  id: string;
+  application: ApplicationDto;
+  date: string;
+  type: 'Determination' | 'Extension';
+  notes?: string | null;
+}
+
 export default function DashboardPage() {
   const { goToApplication } = useAppNavigation();
   const { data, isLoading, error } = useSWR(SWR_KEYS.dashboardOverview, async () => {
@@ -62,7 +70,23 @@ export default function DashboardPage() {
 
     const latestIssues = issues.items.slice(0, 5);
     const outcomeSummary = summarizeOutcomes(determined.items);
-    const upcomingDeterminations = getUpcomingDeterminations([...live.items, ...submitted.items]).slice(0, 5);
+    const activeApplications = [...live.items, ...submitted.items];
+    const extensionCandidates = activeApplications.filter((application) => application.eotDate);
+    const aggregates = await Promise.allSettled(
+      extensionCandidates.map((application) => fetchApplication(application.applicationId))
+    );
+    const extensionMap = new Map<string, { application: ApplicationDto; extensions: ExtensionDto[] }>();
+    aggregates.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const aggregate = result.value;
+        const applicationId = extensionCandidates[index].applicationId;
+        extensionMap.set(applicationId, {
+          application: toDashboardApplication(aggregate.application),
+          extensions: [...aggregate.extensions].sort((left, right) => left.agreedDate.localeCompare(right.agreedDate)),
+        });
+      }
+    });
+    const upcomingDeterminations = getUpcomingDeterminations(activeApplications, extensionMap).slice(0, 5);
     return { counts, latestIssues, outcomeSummary, upcomingDeterminations };
   });
 
@@ -160,25 +184,34 @@ export default function DashboardPage() {
                 <tr>
                   <th style={upcomingHeader}>Project</th>
                   <th style={upcomingHeader}>LPA Reference</th>
-                  <th style={{ ...upcomingHeader, textAlign: 'right' }}>Determination date</th>
+                  <th style={upcomingHeader}>Milestone</th>
+                  <th style={{ ...upcomingHeader, textAlign: 'right' }}>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {data.upcomingDeterminations.map((item, index) => {
                   const cellStyle = index === 0 ? { ...upcomingCell, borderTop: 'none' } : upcomingCell;
                   return (
-                    <tr key={item.applicationId} style={upcomingRow}>
+                    <tr key={item.id} style={upcomingRow}>
                       <td style={cellStyle}>
                         <button
                           type="button"
-                          onClick={() => goToApplication(item.applicationId)}
+                          onClick={() => goToApplication(item.application.applicationId)}
                           style={eventLink}
                         >
-                          {item.prjCodeName}
+                          {item.application.prjCodeName}
                         </button>
                       </td>
-                      <td style={cellStyle}>{item.lpaReference ?? '—'}</td>
-                      <td style={{ ...cellStyle, textAlign: 'right' }}>{formatDate(item.determinationDate)}</td>
+                      <td style={cellStyle}>{item.application.lpaReference ?? '—'}</td>
+                      <td style={cellStyle}>
+                        <span>{item.type === 'Determination' ? 'Determination due' : 'Extension of time'}</span>
+                        {item.type === 'Extension' && item.notes ? (
+                          <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                            {item.notes}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td style={{ ...cellStyle, textAlign: 'right' }}>{formatDate(item.date)}</td>
                     </tr>
                   );
                 })}
@@ -258,17 +291,69 @@ function summarizeOutcomes(applications: ApplicationDto[]) {
   return summary;
 }
 
-function getUpcomingDeterminations(applications: ApplicationDto[]) {
+function getUpcomingDeterminations(
+  applications: ApplicationDto[],
+  extensionData: Map<string, { application: ApplicationDto; extensions: ExtensionDto[] }>
+) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return applications
-    .map((application) => {
-      const determinationDate = application.determinationDate ? parseDateOnly(application.determinationDate) : null;
-      return { application, determinationDate } as const;
+  const events: UpcomingDeterminationEvent[] = [];
+
+  applications.forEach((application) => {
+    const aggregate = extensionData.get(application.applicationId);
+    const applicationRecord = aggregate?.application ?? application;
+
+    if (applicationRecord.determinationDate) {
+      events.push({
+        id: `${application.applicationId}-determination`,
+        application: applicationRecord,
+        date: applicationRecord.determinationDate,
+        type: 'Determination',
+      });
+    }
+
+    if (aggregate) {
+      aggregate.extensions.forEach((extension) => {
+        events.push({
+          id: `${application.applicationId}-extension-${extension.extensionId}`,
+          application: applicationRecord,
+          date: extension.agreedDate,
+          type: 'Extension',
+          notes: extension.notes ?? undefined,
+        });
+      });
+    } else if (application.eotDate) {
+      events.push({
+        id: `${application.applicationId}-extension-latest`,
+        application: applicationRecord,
+        date: application.eotDate,
+        type: 'Extension',
+      });
+    }
+  });
+
+  const typePriority: Record<UpcomingDeterminationEvent['type'], number> = {
+    Determination: 0,
+    Extension: 1,
+  };
+
+  return events
+    .map((event) => ({ event, parsed: parseDateOnly(event.date) }))
+    .filter((entry) => entry.parsed && entry.parsed >= today)
+    .sort((left, right) => {
+      const delta = (left.parsed?.getTime() ?? 0) - (right.parsed?.getTime() ?? 0);
+      if (delta !== 0) {
+        return delta;
+      }
+      if (left.event.type !== right.event.type) {
+        return typePriority[left.event.type] - typePriority[right.event.type];
+      }
+      return left.event.application.prjCodeName.localeCompare(right.event.application.prjCodeName, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
     })
-    .filter((entry) => entry.determinationDate && entry.determinationDate >= today)
-    .sort((left, right) => (left.determinationDate?.getTime() ?? 0) - (right.determinationDate?.getTime() ?? 0))
-    .map((entry) => ({ ...entry.application }));
+    .map((entry) => entry.event);
 }
 
 function parseDateOnly(value: string) {
@@ -318,6 +403,11 @@ function formatDate(value?: string | null) {
     return value;
   }
   return parsed.toLocaleDateString();
+}
+
+function toDashboardApplication(application: ApplicationAggregateDto['application']): ApplicationDto {
+  const { notes: _notes, ...rest } = application;
+  return rest;
 }
 
 const layout: React.CSSProperties = {

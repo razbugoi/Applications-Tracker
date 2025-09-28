@@ -74,6 +74,12 @@ interface CreateExtensionInput {
   notes?: string;
 }
 
+interface UpdateExtensionInput {
+  requestedDate?: string;
+  agreedDate: string;
+  notes?: string;
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -278,9 +284,52 @@ export async function createExtensionOfTime(applicationId: string, input: Create
     buildTimelineEvent(applicationId, 'Live', 'Extension of Time Agreed', timelineDetails)
   );
 
-  await repository.updateApplication(applicationId, { eotDate: input.agreedDate }, aggregate.application);
+  await repository.refreshApplicationExtensionDate(applicationId);
 
   return extension;
+}
+
+export async function updateExtensionOfTime(
+  applicationId: string,
+  extensionId: string,
+  input: UpdateExtensionInput
+): Promise<ExtensionOfTime> {
+  if (!input.agreedDate) {
+    throw new Error('agreedDate is required');
+  }
+
+  const aggregate = await repository.getApplicationAggregate(applicationId);
+  if (!aggregate) {
+    throw new Error('Application not found');
+  }
+
+  if (aggregate.application.status !== 'Live') {
+    throw new Error('Extensions of time can only be modified on Live applications');
+  }
+
+  const existing = await repository.getExtension(applicationId, extensionId);
+  if (!existing) {
+    throw new Error('Extension of time not found');
+  }
+
+  const updated: ExtensionOfTime = {
+    ...existing,
+    requestedDate: input.requestedDate,
+    agreedDate: input.agreedDate,
+    notes: input.notes,
+    updatedAt: nowIso(),
+  };
+
+  await repository.updateExtension(updated);
+  const timelineDetails = input.notes
+    ? `${input.agreedDate} – ${input.notes}`
+    : input.agreedDate;
+  await repository.putTimelineEvent(
+    buildTimelineEvent(applicationId, 'Live', 'Extension of Time Updated', timelineDetails)
+  );
+  await repository.refreshApplicationExtensionDate(applicationId);
+
+  return updated;
 }
 
 export async function updateIssue({ applicationId, issueId, updates }: UpdateIssueInput) {

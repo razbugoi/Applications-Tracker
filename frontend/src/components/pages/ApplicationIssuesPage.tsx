@@ -203,6 +203,8 @@ function IssuesLayout({ applicationId, aggregate, onUpdated, initialIssueId }: I
     return issues.find((issue) => issue.issueId === editDraft.issueId) ?? null;
   }, [issues, editDraft]);
 
+  const isEditingIssueDeleting = Boolean(editingIssue && deletingIssueId === editingIssue.issueId);
+
   async function handleCreateIssue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -531,23 +533,23 @@ function IssuesLayout({ applicationId, aggregate, onUpdated, initialIssueId }: I
                   type="button"
                   style={{ ...dangerButton, marginRight: 'auto' }}
                   onClick={() => handleDeleteIssue(editingIssue)}
-                  disabled={deletingIssueId === editingIssue.issueId || editSaving}
+                  disabled={isEditingIssueDeleting || editSaving}
                 >
-                  {deletingIssueId === editingIssue.issueId ? 'Deleting…' : 'Delete issue'}
+                  {isEditingIssueDeleting ? 'Deleting…' : 'Delete issue'}
                 </button>
               )}
               <button
                 type="button"
                 style={secondaryButton}
                 onClick={handleCancelEdit}
-                disabled={editSaving || (editingIssue && deletingIssueId === editingIssue.issueId)}
+                disabled={editSaving || isEditingIssueDeleting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 style={primaryButton}
-                disabled={editSaving || (editingIssue && deletingIssueId === editingIssue.issueId)}
+                disabled={editSaving || isEditingIssueDeleting}
               >
                 {editSaving ? 'Saving…' : 'Save changes'}
               </button>

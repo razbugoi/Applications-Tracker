@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getApplication, patchApplication } from '@/server/services/applicationService';
+import { deleteApplication, getApplication, patchApplication } from '@/server/services/applicationService';
 import type { ApplicationOutcome, ApplicationStatus } from '@/server/models/application';
 import { toApplicationAggregateDto } from '@/server/serializers/applicationSerializers';
 
@@ -75,6 +75,19 @@ export async function PATCH(request: NextRequest, { params }: { params: { applic
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Failed to update application', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+}
+
+export async function DELETE(_request: NextRequest, { params }: { params: { applicationId: string } }) {
+  try {
+    await deleteApplication(params.applicationId);
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    if ((error as Error).message === 'Application not found') {
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    }
+    console.error('Failed to delete application', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });
   }
 }

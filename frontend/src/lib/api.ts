@@ -92,6 +92,12 @@ export async function updateApplication(applicationId: string, payload: Record<s
   });
 }
 
+export async function deleteApplication(applicationId: string) {
+  return request<void>(`/applications/${applicationId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function listIssues(status?: IssueStatus) {
   const search = status ? `?status=${encodeURIComponent(status)}` : '';
   return request<{ items: IssueDto[] }>(`/issues${search}`);

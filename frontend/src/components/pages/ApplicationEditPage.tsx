@@ -16,7 +16,7 @@ import { useSWRConfig } from 'swr';
 import { BreadcrumbNav } from '@/components/BreadcrumbNav';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useNavigation, buildBreadcrumbs } from '@/contexts/NavigationContext';
-import { fetchApplication, SWR_KEYS, updateApplication, type ApplicationAggregateDto } from '@/lib/api';
+import { deleteApplication, fetchApplication, SWR_KEYS, updateApplication, type ApplicationAggregateDto } from '@/lib/api';
 import { routes } from '@/lib/navigation';
 import { refreshApplicationCaches } from '@/lib/applicationCache';
 import { useAppNavigation } from '@/lib/useAppNavigation';
@@ -53,11 +53,14 @@ interface CoreDraft {
 export function ApplicationEditPage({ applicationId }: Props) {
   const pathname = usePathname();
   const { dispatch } = useNavigation();
-  const { goBack } = useAppNavigation();
+  const { goBack, goTo } = useAppNavigation();
   const { data, error, isLoading, mutate } = useSWR<ApplicationAggregateDto>(
     SWR_KEYS.applicationAggregate(applicationId),
     () => fetchApplication(applicationId)
   );
+  const { mutate: globalMutate } = useSWRConfig();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: isLoading });
@@ -103,6 +106,34 @@ export function ApplicationEditPage({ applicationId }: Props) {
     );
   }
 
+  async function handleDeleteApplication() {
+    if (deleting) {
+      return;
+    }
+    const confirmed = typeof window !== 'undefined' ? window.confirm('Delete this application? This action cannot be undone.') : false;
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await deleteApplication(applicationId);
+      await Promise.all([
+        refreshApplicationCaches(globalMutate, applicationId),
+        globalMutate(SWR_KEYS.dashboardOverview),
+        globalMutate(SWR_KEYS.calendarApplications()),
+        globalMutate(SWR_KEYS.outcomeSummary()),
+      ]);
+      goTo(routes.applications.index);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete application');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div style={pageShell}>
       <BreadcrumbNav />
@@ -114,6 +145,7 @@ export function ApplicationEditPage({ applicationId }: Props) {
         title="Extensions of time"
         description="Capture new extensions or adjust existing agreements directly from the edit view."
       />
+      <ApplicationDangerZone onDelete={handleDeleteApplication} deleting={deleting} error={deleteError} />
     </div>
   );
 }
@@ -420,4 +452,75 @@ const primaryButton: CSSProperties = {
   fontWeight: 600,
   padding: '12px 22px',
   cursor: 'pointer',
+};
+
+function ApplicationDangerZone({
+  onDelete,
+  deleting,
+  error,
+}: {
+  onDelete: () => void;
+  deleting: boolean;
+  error: string | null;
+}) {
+  return (
+    <section style={dangerCard}>
+      <div>
+        <h2 style={dangerTitle}>Delete application</h2>
+        <p style={dangerText}>Remove this application and all associated issues, extensions, and timeline events.</p>
+      </div>
+      {error && <p style={dangerError}>{error}</p>}
+      <button
+        type="button"
+        style={{
+          ...dangerButton,
+          opacity: deleting ? 0.6 : 1,
+          cursor: deleting ? 'not-allowed' : 'pointer',
+        }}
+        onClick={onDelete}
+        disabled={deleting}
+      >
+        {deleting ? 'Deleting…' : 'Delete application'}
+      </button>
+    </section>
+  );
+}
+
+const dangerCard: CSSProperties = {
+  border: '1px solid rgba(220, 38, 38, 0.35)',
+  borderRadius: 16,
+  background: 'rgba(254, 226, 226, 0.35)',
+  padding: 24,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+};
+
+const dangerTitle: CSSProperties = {
+  margin: 0,
+  fontSize: 18,
+  color: '#991b1b',
+};
+
+const dangerText: CSSProperties = {
+  margin: 0,
+  color: '#7f1d1d',
+};
+
+const dangerError: CSSProperties = {
+  margin: 0,
+  color: '#b91c1c',
+  fontSize: 13,
+};
+
+const dangerButton: CSSProperties = {
+  alignSelf: 'flex-start',
+  background: '#b91c1c',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 999,
+  padding: '10px 18px',
+  fontWeight: 600,
+  cursor: 'pointer',
+  opacity: 1,
 };

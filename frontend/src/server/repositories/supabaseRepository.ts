@@ -458,4 +458,12 @@ export class SupabaseRepository {
       throw new Error(`Failed to delete issue: ${error.message}`);
     }
   }
+
+  async deleteApplication(applicationId: string): Promise<void> {
+    const supabase = this.clientFactory();
+    const { error } = await supabase.from('applications').delete().eq('id', applicationId);
+    if (error) {
+      throw new Error(`Failed to delete application: ${error.message}`);
+    }
+  }
 }

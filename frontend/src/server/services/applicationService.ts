@@ -332,6 +332,15 @@ export async function updateExtensionOfTime(
   return updated;
 }
 
+export async function deleteApplication(applicationId: string): Promise<void> {
+  const aggregate = await repository.getApplicationAggregate(applicationId);
+  if (!aggregate) {
+    throw new Error('Application not found');
+  }
+
+  await repository.deleteApplication(applicationId);
+}
+
 export async function updateIssue({ applicationId, issueId, updates }: UpdateIssueInput) {
   const existing = await repository.getIssue(applicationId, issueId);
   if (!existing) {

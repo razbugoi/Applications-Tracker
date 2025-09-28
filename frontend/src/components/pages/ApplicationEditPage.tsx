@@ -20,6 +20,7 @@ import { fetchApplication, SWR_KEYS, updateApplication, type ApplicationAggregat
 import { routes } from '@/lib/navigation';
 import { refreshApplicationCaches } from '@/lib/applicationCache';
 import { useAppNavigation } from '@/lib/useAppNavigation';
+import { ApplicationExtensionsPanel } from '@/components/ApplicationExtensionsPanel';
 
 interface Props {
   applicationId: string;
@@ -106,6 +107,13 @@ export function ApplicationEditPage({ applicationId }: Props) {
     <div style={pageShell}>
       <BreadcrumbNav />
       <ApplicationEditForm applicationId={applicationId} aggregate={data} onUpdated={mutate} />
+      <ApplicationExtensionsPanel
+        applicationId={applicationId}
+        aggregate={data}
+        onUpdated={mutate}
+        title="Extensions of time"
+        description="Capture new extensions or adjust existing agreements directly from the edit view."
+      />
     </div>
   );
 }

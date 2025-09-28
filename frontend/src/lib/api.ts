@@ -48,7 +48,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export type { ApplicationDto, ApplicationAggregateDto, IssueDto, TimelineEventDto, ExtensionDto };
 
 export async function listApplications(status: ApplicationStatus) {
-  return request<{ items: ApplicationDto[]; nextToken?: string }>(`/applications?status=${encodeURIComponent(status)}`);
+  const response = await request<{ items: ApplicationDto[]; nextToken?: string }>(
+    `/applications?status=${encodeURIComponent(status)}`
+  );
+  return { ...response, items: sortApplicationsByProjectCode(response.items) };
 }
 
 export async function createApplication(payload: Record<string, unknown>) {
@@ -99,4 +102,13 @@ export async function createExtension(applicationId: string, payload: Record<str
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+function sortApplicationsByProjectCode(applications: ApplicationDto[]) {
+  return [...applications].sort((left, right) =>
+    (left.prjCodeName ?? '').localeCompare(right.prjCodeName ?? '', undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    })
+  );
 }

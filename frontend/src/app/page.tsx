@@ -260,15 +260,29 @@ function summarizeOutcomes(applications: ApplicationDto[]) {
 
 function getUpcomingDeterminations(applications: ApplicationDto[]) {
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   return applications
-    .filter((application) => {
-      if (!application.determinationDate) {
-        return false;
-      }
-      const date = new Date(application.determinationDate);
-      return !Number.isNaN(date.getTime()) && date >= today;
+    .map((application) => {
+      const determinationDate = application.determinationDate ? parseDateOnly(application.determinationDate) : null;
+      return { application, determinationDate } as const;
     })
-    .sort((a, b) => (a.determinationDate ?? '').localeCompare(b.determinationDate ?? ''));
+    .filter((entry) => entry.determinationDate && entry.determinationDate >= today)
+    .sort((left, right) => (left.determinationDate?.getTime() ?? 0) - (right.determinationDate?.getTime() ?? 0))
+    .map((entry) => ({ ...entry.application }));
+}
+
+function parseDateOnly(value: string) {
+  const parts = value.split('-').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+    return null;
+  }
+  const [year, month, day] = parts;
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
 function OutcomeChip({

@@ -62,7 +62,7 @@ export default function DashboardPage() {
 
     const latestIssues = issues.items.slice(0, 5);
     const outcomeSummary = summarizeOutcomes(determined.items);
-    const upcomingDeterminations = getUpcomingDeterminations([...live.items, ...submitted.items]);
+    const upcomingDeterminations = getUpcomingDeterminations([...live.items, ...submitted.items]).slice(0, 5);
     return { counts, latestIssues, outcomeSummary, upcomingDeterminations };
   });
 
@@ -154,20 +154,37 @@ export default function DashboardPage() {
           <p style={messageStyle}>No upcoming determination dates captured.</p>
         )}
         {!isLoading && data && data.upcomingDeterminations.length > 0 && (
-          <ul style={upcomingList}>
-            {data.upcomingDeterminations.slice(0, 5).map((item) => (
-              <li key={item.applicationId} style={upcomingRow}>
-                <button
-                  type="button"
-                  onClick={() => goToApplication(item.applicationId)}
-                  style={eventLink}
-                >
-                  {item.prjCodeName}
-                </button>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(item.determinationDate)}</span>
-              </li>
-            ))}
-          </ul>
+          <div style={tableWrapper}>
+            <table style={upcomingTable}>
+              <thead>
+                <tr>
+                  <th style={upcomingHeader}>Project</th>
+                  <th style={upcomingHeader}>PP Reference</th>
+                  <th style={{ ...upcomingHeader, textAlign: 'right' }}>Determination date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.upcomingDeterminations.map((item, index) => {
+                  const cellStyle = index === 0 ? { ...upcomingCell, borderTop: 'none' } : upcomingCell;
+                  return (
+                    <tr key={item.applicationId} style={upcomingRow}>
+                      <td style={cellStyle}>
+                        <button
+                          type="button"
+                          onClick={() => goToApplication(item.applicationId)}
+                          style={eventLink}
+                        >
+                          {item.prjCodeName}
+                        </button>
+                      </td>
+                      <td style={cellStyle}>{item.ppReference}</td>
+                      <td style={{ ...cellStyle, textAlign: 'right' }}>{formatDate(item.determinationDate)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -425,23 +442,35 @@ const chip: React.CSSProperties = {
   color: 'var(--text)',
 };
 
-const upcomingList: React.CSSProperties = {
-  listStyle: 'none',
-  margin: 0,
-  padding: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
+const tableWrapper: React.CSSProperties = {
+  border: '1px solid var(--border)',
+  borderRadius: 16,
+  overflow: 'hidden',
+};
+
+const upcomingTable: React.CSSProperties = {
+  width: '100%',
+  borderCollapse: 'separate',
+  borderSpacing: 0,
+};
+
+const upcomingHeader: React.CSSProperties = {
+  textAlign: 'left',
+  fontSize: 12,
+  color: 'var(--text-muted)',
+  padding: '12px 16px',
+  background: 'rgba(37, 99, 235, 0.08)',
+  fontWeight: 600,
 };
 
 const upcomingRow: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: '10px 12px',
-  background: 'rgba(248, 250, 252, 0.9)',
+  background: 'rgba(248, 250, 252, 0.95)',
+};
+
+const upcomingCell: React.CSSProperties = {
+  padding: '14px 16px',
+  fontSize: 14,
+  borderTop: '1px solid var(--border-subtle)',
 };
 
 const outcomeSection: React.CSSProperties = {
@@ -473,4 +502,9 @@ const eventLink: React.CSSProperties = {
   fontWeight: 600,
   textDecoration: 'none',
   color: 'var(--text)',
+  border: 'none',
+  background: 'transparent',
+  padding: 0,
+  cursor: 'pointer',
+  textAlign: 'left',
 };

@@ -159,7 +159,8 @@ export default function DashboardPage() {
               <thead>
                 <tr>
                   <th style={upcomingHeader}>Project</th>
-                  <th style={upcomingHeader}>PP Reference</th>
+                  <th style={upcomingHeader}>LPA Reference</th>
+                  <th style={{ ...upcomingHeader, textAlign: 'right' }}>PP Reference</th>
                   <th style={{ ...upcomingHeader, textAlign: 'right' }}>Determination date</th>
                 </tr>
               </thead>
@@ -177,7 +178,8 @@ export default function DashboardPage() {
                           {item.prjCodeName}
                         </button>
                       </td>
-                      <td style={cellStyle}>{item.ppReference}</td>
+                      <td style={cellStyle}>{item.lpaReference ?? '—'}</td>
+                      <td style={{ ...cellStyle, textAlign: 'right' }}>{item.ppReference}</td>
                       <td style={{ ...cellStyle, textAlign: 'right' }}>{formatDate(item.determinationDate)}</td>
                     </tr>
                   );

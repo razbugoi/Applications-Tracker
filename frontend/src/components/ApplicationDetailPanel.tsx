@@ -20,7 +20,8 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
 
   const { mutate: globalMutate } = useSWRConfig();
   const [promoting, setPromoting] = useState(false);
-  const [promoteError, setPromoteError] = useState<string | null>(null);
+  const [returning, setReturning] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { goToApplication } = useAppNavigation();
 
@@ -53,7 +54,7 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
       return;
     }
 
-    setPromoteError(null);
+    setActionError(null);
     let validationDate = data.application.validationDate ?? '';
 
     if (!validationDate && typeof window !== 'undefined') {
@@ -65,12 +66,12 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
     }
 
     if (!validationDate) {
-      setPromoteError('Validation date is required before moving to Live.');
+      setActionError('Validation date is required before moving to Live.');
       return;
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(validationDate)) {
-      setPromoteError('Validation date must be in YYYY-MM-DD format.');
+      setActionError('Validation date must be in YYYY-MM-DD format.');
       return;
     }
 
@@ -86,9 +87,38 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
       ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to move application to Live.';
-      setPromoteError(message);
+      setActionError(message);
     } finally {
       setPromoting(false);
+    }
+  }
+
+  async function handleReturnToSubmitted() {
+    if (returning) {
+      return;
+    }
+    setActionError(null);
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm('Return this application to Submitted status?');
+      if (!confirmed) {
+        return;
+      }
+    }
+    setReturning(true);
+    try {
+      await updateApplication(applicationId, { status: 'Submitted' });
+      await Promise.all([
+        mutate(),
+        refreshApplicationCaches(globalMutate, applicationId),
+        globalMutate(SWR_KEYS.dashboardOverview),
+        globalMutate(SWR_KEYS.calendarApplications()),
+        globalMutate(SWR_KEYS.outcomeSummary()),
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to return application to Submitted.';
+      setActionError(message);
+    } finally {
+      setReturning(false);
     }
   }
 
@@ -106,6 +136,20 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
           <div style={summaryMetaColumn}>
             <div style={statusBadge(application.status)}>{application.status ?? 'Unknown'}</div>
             <nav style={actionGroup} aria-label="Application navigation">
+              {application.status === 'Invalidated' && (
+                <button
+                  type="button"
+                  style={{
+                    ...ghostButton,
+                    opacity: returning ? 0.7 : 1,
+                    cursor: returning ? 'wait' : 'pointer',
+                  }}
+                  onClick={handleReturnToSubmitted}
+                  disabled={returning}
+                >
+                  {returning ? 'Reverting…' : 'Return to Submitted'}
+                </button>
+              )}
               {application.status === 'Submitted' && (
                 <button
                   type="button"
@@ -130,7 +174,7 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
                 View timeline
               </button>
             </nav>
-            {promoteError && <span style={actionError}>{promoteError}</span>}
+            {actionError && <span style={actionErrorStyle}>{actionError}</span>}
           </div>
         </div>
         <div style={summaryStatsRow}>
@@ -522,6 +566,17 @@ const successButton: CSSProperties = {
   boxShadow: '0 8px 20px rgba(34, 197, 94, 0.25)',
 };
 
+const ghostButton: CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid rgba(249, 115, 22, 0.35)',
+  color: '#ea580c',
+  borderRadius: 999,
+  fontWeight: 600,
+  padding: '8px 18px',
+  fontSize: 13,
+  boxShadow: '0 6px 16px rgba(234, 88, 12, 0.15)',
+};
+
 const primaryButton: CSSProperties = {
   background: 'var(--primary)',
   border: '1px solid var(--primary)',
@@ -554,7 +609,7 @@ const linkButton: CSSProperties = {
   fontSize: 13,
 };
 
-const actionError: CSSProperties = {
+const actionErrorStyle: CSSProperties = {
   color: 'var(--danger)',
   fontSize: 12,
   textAlign: 'right',

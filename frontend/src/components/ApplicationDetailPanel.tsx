@@ -1,21 +1,26 @@
 'use client';
 
-import { useMemo, type CSSProperties, type ReactNode } from 'react';
-import useSWR from 'swr';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import useSWR, { useSWRConfig } from 'swr';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { fetchApplication, SWR_KEYS, type ApplicationAggregateDto } from '@/lib/api';
+import { fetchApplication, SWR_KEYS, updateApplication, type ApplicationAggregateDto } from '@/lib/api';
 import { useAppNavigation } from '@/lib/useAppNavigation';
+import { refreshApplicationCaches } from '@/lib/applicationCache';
 
 interface Props {
   applicationId: string;
 }
 
 export function ApplicationDetailPanel({ applicationId }: Props) {
-  const { data, error, isLoading } = useSWR<ApplicationAggregateDto>(
+  const { data, error, isLoading, mutate } = useSWR<ApplicationAggregateDto>(
     SWR_KEYS.applicationAggregate(applicationId),
     () => fetchApplication(applicationId)
   );
+
+  const { mutate: globalMutate } = useSWRConfig();
+  const [promoting, setPromoting] = useState(false);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
 
   const { goToApplication } = useAppNavigation();
 
@@ -40,6 +45,53 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
   const timelineSummary = useMemo(() => buildTimelineSummary(timeline ?? []), [timeline]);
   const detailItems = buildDetailItems(application);
 
+  async function handleMoveToLive() {
+    if (promoting) {
+      return;
+    }
+    if (!data) {
+      return;
+    }
+
+    setPromoteError(null);
+    let validationDate = data.application.validationDate ?? '';
+
+    if (!validationDate && typeof window !== 'undefined') {
+      const input = window.prompt('Enter validation date (YYYY-MM-DD) to move this application to Live.');
+      if (!input) {
+        return;
+      }
+      validationDate = input.trim();
+    }
+
+    if (!validationDate) {
+      setPromoteError('Validation date is required before moving to Live.');
+      return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(validationDate)) {
+      setPromoteError('Validation date must be in YYYY-MM-DD format.');
+      return;
+    }
+
+    setPromoting(true);
+    try {
+      await updateApplication(applicationId, { status: 'Live', validationDate });
+      await Promise.all([
+        mutate(),
+        refreshApplicationCaches(globalMutate, applicationId),
+        globalMutate(SWR_KEYS.dashboardOverview),
+        globalMutate(SWR_KEYS.calendarApplications()),
+        globalMutate(SWR_KEYS.outcomeSummary()),
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to move application to Live.';
+      setPromoteError(message);
+    } finally {
+      setPromoting(false);
+    }
+  }
+
   return (
     <div style={panelStyle}>
       <header style={summaryCard}>
@@ -54,6 +106,20 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
           <div style={summaryMetaColumn}>
             <div style={statusBadge(application.status)}>{application.status ?? 'Unknown'}</div>
             <nav style={actionGroup} aria-label="Application navigation">
+              {application.status === 'Submitted' && (
+                <button
+                  type="button"
+                  style={{
+                    ...successButton,
+                    opacity: promoting ? 0.7 : 1,
+                    cursor: promoting ? 'wait' : 'pointer',
+                  }}
+                  onClick={handleMoveToLive}
+                  disabled={promoting}
+                >
+                  {promoting ? 'Moving…' : 'Move to Live'}
+                </button>
+              )}
               <button type="button" style={primaryButton} onClick={() => goToApplication(application.applicationId, 'edit')}>
                 Edit details
               </button>
@@ -64,6 +130,7 @@ export function ApplicationDetailPanel({ applicationId }: Props) {
                 View timeline
               </button>
             </nav>
+            {promoteError && <span style={actionError}>{promoteError}</span>}
           </div>
         </div>
         <div style={summaryStatsRow}>
@@ -444,6 +511,17 @@ const detailValue: CSSProperties = {
   wordBreak: 'break-word',
 };
 
+const successButton: CSSProperties = {
+  background: '#22c55e',
+  border: '1px solid #22c55e',
+  color: '#fff',
+  borderRadius: 999,
+  fontWeight: 600,
+  padding: '8px 18px',
+  fontSize: 13,
+  boxShadow: '0 8px 20px rgba(34, 197, 94, 0.25)',
+};
+
 const primaryButton: CSSProperties = {
   background: 'var(--primary)',
   border: '1px solid var(--primary)',
@@ -474,6 +552,12 @@ const linkButton: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   fontSize: 13,
+};
+
+const actionError: CSSProperties = {
+  color: 'var(--danger)',
+  fontSize: 12,
+  textAlign: 'right',
 };
 
 const issueSummaryGrid: CSSProperties = {

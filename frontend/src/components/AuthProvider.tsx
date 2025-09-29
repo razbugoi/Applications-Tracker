@@ -4,6 +4,20 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabaseBrowserClient';
 
+const ALLOWED_EMAIL_DOMAIN = 'workbyhere.com';
+
+function assertAllowedEmail(email: string) {
+  const normalised = email.trim().toLowerCase();
+  const atIndex = normalised.lastIndexOf('@');
+  if (atIndex === -1) {
+    throw new Error('Enter a valid workbyhere.com email address.');
+  }
+  const domain = normalised.slice(atIndex + 1);
+  if (domain !== ALLOWED_EMAIL_DOMAIN) {
+    throw new Error('Only workbyhere.com email addresses are allowed.');
+  }
+}
+
 interface AuthContextValue {
   isAuthenticated: boolean;
   isInitialising: boolean;
@@ -78,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) {
         throw new Error('Supabase client unavailable');
       }
+      assertAllowedEmail(email);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         throw error;
@@ -87,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) {
         throw new Error('Supabase client unavailable');
       }
+      assertAllowedEmail(email);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -105,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) {
         throw new Error('Supabase client unavailable');
       }
+      assertAllowedEmail(email);
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: window.location.origin },

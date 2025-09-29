@@ -147,6 +147,7 @@ function SignInForm({
   const [message, setMessage] = useState<string | null>(null);
   const [magicStatus, setMagicStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [magicMessage, setMagicMessage] = useState<string | null>(null);
+  const domainHint = 'Use your workbyhere.com email address to access the tracker.';
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -171,9 +172,10 @@ function SignInForm({
     <>
       <header>
         <h1 style={{ marginBottom: 8 }}>Welcome back</h1>
-        <p style={{ marginTop: 0, marginBottom: 24, color: 'var(--text-muted)' }}>
+        <p style={{ marginTop: 0, marginBottom: 8, color: 'var(--text-muted)' }}>
           Sign in with your email and password or request a magic link if you forgot it.
         </p>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)' }}>{domainHint}</p>
       </header>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label style={fieldLabel}>
@@ -291,6 +293,7 @@ function SignUpForm({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const domainHint = 'We only allow registrations from workbyhere.com email addresses.';
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -334,9 +337,10 @@ function SignUpForm({
     <>
       <header>
         <h1 style={{ marginBottom: 8 }}>Create an account</h1>
-        <p style={{ marginTop: 0, marginBottom: 24, color: 'var(--text-muted)' }}>
+        <p style={{ marginTop: 0, marginBottom: 8, color: 'var(--text-muted)' }}>
           Register to start tracking applications with your team.
         </p>
+        <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)' }}>{domainHint}</p>
       </header>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label style={fieldLabel}>

@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode, type CSSProperties } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { NavigationBar } from '@/components/NavigationBar';
 
 interface Props {
   children: ReactNode;
@@ -12,8 +13,15 @@ export function RouteGuard({ children }: Props) {
   const { isAuthenticated, isInitialising, signInWithPassword, signUpWithPassword, sendMagicLink } = useAuth();
   const bypassAuth = process.env.NEXT_PUBLIC_SUPABASE_BYPASS_AUTH === 'true';
 
+  const renderAppShell = (content: ReactNode) => (
+    <>
+      <NavigationBar />
+      <main className="app-shell__main">{content}</main>
+    </>
+  );
+
   if (bypassAuth) {
-    return <>{children}</>;
+    return renderAppShell(children);
   }
 
   if (isInitialising) {
@@ -34,7 +42,7 @@ export function RouteGuard({ children }: Props) {
     );
   }
 
-  return <>{children}</>;
+  return renderAppShell(children);
 }
 
 type AuthCardMode = 'signIn' | 'signUp';
@@ -58,7 +66,11 @@ function AuthenticationCard({
   ), []);
 
   return (
-    <div style={guardWrapper}>
+    <div style={authPage}>
+      <header style={authHeader}>
+        <h1 style={authTitle}>Planning Application Tracker</h1>
+        <p style={authSubtitle}>Stay on top of submissions, issues, and decisions.</p>
+      </header>
       <div style={card}>
         <div style={tabList} role="tablist" aria-label="Authentication tabs">
           {tabButtons.map((tab) => {
@@ -188,7 +200,15 @@ function SignInForm({
             autoComplete="current-password"
           />
         </label>
-        <button type="submit" disabled={disabled || status === 'loading'}>
+        <button
+          type="submit"
+          disabled={disabled || status === 'loading'}
+          style={{
+            ...primaryActionButton,
+            opacity: disabled || status === 'loading' ? 0.7 : 1,
+            cursor: disabled || status === 'loading' ? 'not-allowed' : 'pointer',
+          }}
+        >
           {status === 'loading' ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
@@ -213,11 +233,24 @@ function SignInForm({
             }
           }}
           disabled={disabled || magicStatus === 'loading'}
-          style={secondaryActionButton}
+          style={{
+            ...secondaryActionButton,
+            opacity: disabled || magicStatus === 'loading' ? 0.7 : 1,
+            cursor: disabled || magicStatus === 'loading' ? 'not-allowed' : 'pointer',
+          }}
         >
           {magicStatus === 'loading' ? 'Sending magic link…' : 'Email me a magic link'}
         </button>
-        <button type="button" onClick={onSwitchToSignUp} style={linkButton} disabled={disabled}>
+        <button
+          type="button"
+          onClick={onSwitchToSignUp}
+          style={{
+            ...linkButton,
+            opacity: disabled ? 0.6 : 1,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+          }}
+          disabled={disabled}
+        >
           Need an account? Sign up
         </button>
       </div>
@@ -353,11 +386,29 @@ function SignUpForm({
             autoComplete="new-password"
           />
         </label>
-        <button type="submit" disabled={disabled || status === 'loading'}>
+        <button
+          type="submit"
+          disabled={disabled || status === 'loading'}
+          style={{
+            ...primaryActionButton,
+            opacity: disabled || status === 'loading' ? 0.7 : 1,
+            cursor: disabled || status === 'loading' ? 'not-allowed' : 'pointer',
+          }}
+        >
           {status === 'loading' ? 'Creating account…' : 'Create account'}
         </button>
       </form>
-      <button type="button" onClick={onSwitchToSignIn} style={{ ...linkButton, marginTop: 16 }} disabled={disabled}>
+      <button
+        type="button"
+        onClick={onSwitchToSignIn}
+        style={{
+          ...linkButton,
+          marginTop: 16,
+          opacity: disabled ? 0.6 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        }}
+        disabled={disabled}
+      >
         Already registered? Sign in
       </button>
       {status === 'loading' ? (
@@ -388,52 +439,82 @@ const loadingWrapper: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  minHeight: '60vh',
+  minHeight: '100vh',
   width: '100%',
 };
 
-const guardWrapper: CSSProperties = {
+const authPage: CSSProperties = {
+  minHeight: '100vh',
+  width: '100%',
   display: 'flex',
+  flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  minHeight: '60vh',
-  padding: '24px 16px',
+  padding: '72px 16px',
+  gap: 32,
+  background: 'linear-gradient(180deg, #eef2ff 0%, #ffffff 55%)',
+};
+
+const authHeader: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  textAlign: 'center',
+  gap: 8,
+  maxWidth: 520,
+};
+
+const authTitle: CSSProperties = {
+  margin: 0,
+  fontSize: 32,
+  lineHeight: 1.1,
+  fontWeight: 700,
+  color: 'var(--text)',
+};
+
+const authSubtitle: CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  color: 'var(--text-muted)',
 };
 
 const card: CSSProperties = {
-  width: 'min(460px, 92vw)',
+  width: 'min(440px, 92vw)',
   background: '#ffffff',
-  borderRadius: 16,
-  padding: 32,
-  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
+  borderRadius: 20,
+  padding: 36,
+  boxShadow: '0 20px 45px rgba(15, 23, 42, 0.14)',
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
+  gap: 16,
+  border: '1px solid rgba(99, 102, 241, 0.12)',
 };
 
 const tabList: CSSProperties = {
-  display: 'flex',
-  gap: 12,
-  marginBottom: 12,
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  padding: 4,
+  borderRadius: 12,
+  background: 'rgba(99, 102, 241, 0.08)',
+  gap: 4,
 };
 
 const tabButton: CSSProperties = {
-  flex: 1,
-  padding: '10px 14px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
-  background: '#f8fafc',
-  color: 'var(--text-muted)',
+  padding: '10px 12px',
+  borderRadius: 10,
+  border: 'none',
+  background: 'transparent',
+  color: 'rgba(30, 41, 59, 0.65)',
   fontWeight: 600,
   cursor: 'pointer',
+  transition: 'all 0.2s ease',
 };
 
 const tabButtonActive: CSSProperties = {
   ...tabButton,
-  borderColor: 'rgba(37, 99, 235, 0.4)',
-  background: 'rgba(37, 99, 235, 0.1)',
-  color: 'var(--primary-dark)',
-  boxShadow: '0 2px 10px rgba(37, 99, 235, 0.16)',
+  background: '#ffffff',
+  color: '#1d4ed8',
+  boxShadow: '0 6px 16px rgba(37, 99, 235, 0.18)',
 };
 
 const fieldLabel: CSSProperties = {
@@ -449,16 +530,17 @@ const inputStyle: CSSProperties = {
   borderRadius: 6,
   border: '1px solid #d1d5db',
   fontSize: 15,
+  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
 };
 
 const secondaryActionButton: CSSProperties = {
   padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid rgba(37, 99, 235, 0.3)',
-  background: '#ffffff',
-  color: 'var(--primary-dark)',
-  cursor: 'pointer',
+  borderRadius: 10,
+  border: '1px solid rgba(59, 130, 246, 0.35)',
+  background: '#f8fafc',
+  color: '#1d4ed8',
   fontWeight: 600,
+  transition: 'all 0.2s ease',
 };
 
 const linkButton: CSSProperties = {
@@ -470,4 +552,17 @@ const linkButton: CSSProperties = {
   textDecoration: 'underline',
   padding: 0,
   alignSelf: 'flex-start',
+};
+
+const primaryActionButton: CSSProperties = {
+  width: '100%',
+  padding: '12px 16px',
+  borderRadius: 10,
+  border: 'none',
+  background: 'linear-gradient(135deg, #4f46e5, #2563eb)',
+  color: '#fff',
+  fontWeight: 700,
+  fontSize: 15,
+  transition: 'all 0.2s ease',
+  boxShadow: '0 12px 25px rgba(37, 99, 235, 0.25)',
 };

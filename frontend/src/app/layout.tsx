@@ -2,7 +2,6 @@
 
 import './globals.css';
 import type { ReactNode } from 'react';
-import { NavigationBar } from '@/components/NavigationBar';
 import { AuthProvider } from '@/components/AuthProvider';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -16,10 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <NavigationProvider>
             <ErrorBoundary>
               <div className="app-shell">
-                <NavigationBar />
-                <RouteGuard>
-                  <main className="app-shell__main">{children}</main>
-                </RouteGuard>
+                <RouteGuard>{children}</RouteGuard>
               </div>
             </ErrorBoundary>
           </NavigationProvider>

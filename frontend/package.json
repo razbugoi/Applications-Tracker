@@ -9,6 +9,7 @@
     "start": "node .next/standalone/server.js",
     "lint": "next lint",
     "test:e2e": "playwright test",
+    "test:unit": "tsx --test \"tests/unit/**/*.test.ts\"",
     "test:security": "tsx tests/security/rlsCheck.ts",
     "deploy:prod": "vercel deploy --prebuilt --prod"
   },

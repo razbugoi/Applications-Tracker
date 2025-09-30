@@ -40,17 +40,48 @@ interface CreateApplicationInput {
 
 interface UpdateApplicationInput {
   status?: ApplicationStatus;
-  validationDate?: string;
-  determinationDate?: string;
-  eotDate?: string;
+  validationDate?: string | null;
+  determinationDate?: string | null;
+  eotDate?: string | null;
   outcome?: ApplicationOutcome;
-  notes?: string;
+  notes?: string | null;
   council?: string;
   description?: string;
-  lpaReference?: string;
+  lpaReference?: string | null;
   planningPortalUrl?: string | null;
   caseOfficer?: string | null;
   caseOfficerEmail?: string | null;
+}
+
+function valueProvided(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+export function shouldAutoPromoteToLive(
+  application: Application,
+  issues: Issue[],
+  updates: UpdateApplicationInput
+): boolean {
+  if (updates.status || application.status !== 'Submitted') {
+    return false;
+  }
+
+  const unresolvedIssues = issues.some((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
+  if (unresolvedIssues) {
+    return false;
+  }
+
+  const determinationChangedToValue =
+    updates.determinationDate !== undefined &&
+    updates.determinationDate !== null &&
+    updates.determinationDate !== application.determinationDate;
+  if (!determinationChangedToValue) {
+    return false;
+  }
+
+  const hasValidationDate = valueProvided(updates.validationDate ?? application.validationDate ?? undefined);
+
+  return hasValidationDate;
 }
 
 interface CreateIssueInput {
@@ -180,30 +211,36 @@ export async function patchApplication(
     throw new Error('Application not found');
   }
   const { application, issues } = aggregate;
-  const nextStatus = updates.status ?? application.status;
+  const updatePayload: UpdateApplicationInput = { ...updates };
+
+  if (shouldAutoPromoteToLive(application, issues, updatePayload)) {
+    updatePayload.status = 'Live';
+  }
+
+  const nextStatus = updatePayload.status ?? application.status;
 
   if (nextStatus === 'Live') {
     const unresolved = issues.filter((issue) => issue.status !== 'Resolved' && issue.status !== 'Closed');
     if (unresolved.length > 0) {
       throw new Error('Cannot mark application as Live while issues remain open');
     }
-    if (!updates.validationDate && !application.validationDate) {
+    if (!valueProvided(updatePayload.validationDate ?? application.validationDate ?? undefined)) {
       throw new Error('Validation date required when moving to Live');
     }
   }
 
   if (nextStatus === 'Determined') {
-    if (!updates.outcome && !application.outcome) {
+    if (!updatePayload.outcome && !application.outcome) {
       throw new Error('Outcome required to mark application as Determined');
     }
-    if (!updates.determinationDate && !application.determinationDate) {
+    if (!valueProvided(updatePayload.determinationDate ?? application.determinationDate ?? undefined)) {
       throw new Error('Determination date required when marking as Determined');
     }
   }
 
   const merged: Application = {
     ...application,
-    ...updates,
+    ...updatePayload,
     status: nextStatus,
   };
   assertDateOrder(merged);
@@ -212,20 +249,22 @@ export async function patchApplication(
     context.teamId,
     applicationId,
     {
-      ...updates,
+      ...updatePayload,
       status: nextStatus,
     },
     application
   );
 
-  if (updates.status && updates.status !== application.status) {
+  if (updatePayload.status && updatePayload.status !== application.status) {
     const eventNameMap: Record<ApplicationStatus, string> = {
       Submitted: 'Submitted',
       Invalidated: 'Invalidated',
       Live: application.status === 'Invalidated' ? 'Revalidated' : 'Validated',
       Determined: 'Decision Issued',
     };
-    await repository.putTimelineEvent(buildTimelineEvent(applicationId, updates.status, eventNameMap[updates.status]));
+    await repository.putTimelineEvent(
+      buildTimelineEvent(applicationId, updatePayload.status, eventNameMap[updatePayload.status])
+    );
   }
 }
 

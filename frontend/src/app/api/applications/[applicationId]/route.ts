@@ -4,6 +4,7 @@ import { ApiAuthError, requireAuthenticatedTeamMember } from '@/server/auth/guar
 import { deleteApplication, getApplication, patchApplication } from '@/server/services/applicationService';
 import type { ApplicationOutcome, ApplicationStatus } from '@/server/models/application';
 import { toApplicationAggregateDto } from '@/server/serializers/applicationSerializers';
+import { normalise } from '../utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,14 +27,6 @@ const updateSchema = z
     planningPortalUrl: z.string().url().optional().nullable(),
   })
   .strict();
-
-function normalise(value: string | null | undefined) {
-  if (value == null) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}
 
 export async function GET(_request: NextRequest, { params }: { params: { applicationId: string } }) {
   const auth = await authenticate();
@@ -80,8 +73,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { applic
       caseOfficerEmail: normalise(payload.caseOfficerEmail ?? undefined),
       outcome: payload.outcome,
       notes: normalise(payload.notes ?? undefined),
-      council: normalise(payload.council ?? undefined),
-      description: normalise(payload.description ?? undefined),
+      council: normalise(payload.council ?? undefined) ?? undefined,
+      description: normalise(payload.description ?? undefined) ?? undefined,
       lpaReference: normalise(payload.lpaReference ?? undefined),
       planningPortalUrl: normalise(payload.planningPortalUrl ?? undefined),
     });

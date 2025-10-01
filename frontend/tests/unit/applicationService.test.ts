@@ -6,7 +6,7 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'service-role-key';
 
 const serviceModule = await import('../../src/server/services/applicationService');
-const { shouldAutoPromoteToLive } = serviceModule;
+const { shouldAutoPromoteToLive, shouldAutoMarkDetermined } = serviceModule;
 
 const routeModule = await import('../../src/app/api/applications/utils');
 const { normalise } = routeModule;
@@ -79,6 +79,26 @@ describe('shouldAutoPromoteToLive', () => {
     const application = buildApplication({ validationDate: null });
     const updates = { determinationDate: '2024-02-20' };
     assert.equal(shouldAutoPromoteToLive(application, [], updates), false);
+  });
+});
+
+describe('shouldAutoMarkDetermined', () => {
+  it('returns true when a final outcome is provided without explicit status', () => {
+    const application = buildApplication();
+    const updates = { outcome: 'Refused' as const };
+    assert.equal(shouldAutoMarkDetermined(application, updates), true);
+  });
+
+  it('returns false when outcome remains pending', () => {
+    const application = buildApplication();
+    const updates = { outcome: 'Pending' as const };
+    assert.equal(shouldAutoMarkDetermined(application, updates), false);
+  });
+
+  it('returns false when status is explicitly provided', () => {
+    const application = buildApplication();
+    const updates = { outcome: 'Approved' as const, status: 'Live' as const };
+    assert.equal(shouldAutoMarkDetermined(application, updates), false);
   });
 });
 

@@ -53,6 +53,8 @@ interface UpdateApplicationInput {
   caseOfficerEmail?: string | null;
 }
 
+const FINAL_OUTCOMES: ApplicationOutcome[] = ['Approved', 'Refused', 'Withdrawn'];
+
 function valueProvided(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.length > 0;
 }
@@ -82,6 +84,24 @@ export function shouldAutoPromoteToLive(
   const hasValidationDate = valueProvided(updates.validationDate ?? application.validationDate ?? undefined);
 
   return hasValidationDate;
+}
+
+function isFinalOutcome(outcome?: ApplicationOutcome | null): outcome is ApplicationOutcome {
+  if (!outcome) {
+    return false;
+  }
+  return FINAL_OUTCOMES.includes(outcome);
+}
+
+export function shouldAutoMarkDetermined(
+  application: Application,
+  updates: UpdateApplicationInput
+): boolean {
+  if (updates.status !== undefined) {
+    return false;
+  }
+  const nextOutcome = updates.outcome ?? application.outcome;
+  return isFinalOutcome(nextOutcome);
 }
 
 interface CreateIssueInput {
@@ -212,9 +232,14 @@ export async function patchApplication(
   }
   const { application, issues } = aggregate;
   const updatePayload: UpdateApplicationInput = { ...updates };
+  const shouldMarkDetermined = shouldAutoMarkDetermined(application, updatePayload);
 
   if (shouldAutoPromoteToLive(application, issues, updatePayload)) {
     updatePayload.status = 'Live';
+  }
+
+  if (shouldMarkDetermined) {
+    updatePayload.status = 'Determined';
   }
 
   const nextStatus = updatePayload.status ?? application.status;
